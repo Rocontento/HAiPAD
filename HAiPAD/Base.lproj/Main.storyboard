@@ -38,10 +38,17 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="K3C-gf-Ucr">
-                                        <rect key="frame" x="249" y="15" width="54" height="30"/>
+                                        <rect key="frame" x="201" y="15" width="54" height="30"/>
                                         <state key="normal" title="Refresh"/>
                                         <connections>
                                             <action selector="refreshButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="MxT-fQ-aN3"/>
+                                        </connections>
+                                    </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="abc-def-ghi">
+                                        <rect key="frame" x="147" y="15" width="46" height="30"/>
+                                        <state key="normal" title="Entities"/>
+                                        <connections>
+                                            <action selector="entitiesButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="jkl-mno-pqr"/>
                                         </connections>
                                     </button>
                                 </subviews>
@@ -54,6 +61,8 @@
                                     <constraint firstAttribute="height" constant="60" id="MjK-xI-Gdn"/>
                                     <constraint firstItem="Bfi-3H-dKE" firstAttribute="leading" secondItem="K3C-gf-Ucr" secondAttribute="trailing" constant="8" id="rZj-0T-bhh"/>
                                     <constraint firstItem="K3C-gf-Ucr" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="zC8-cl-vWf"/>
+                                    <constraint firstItem="K3C-gf-Ucr" firstAttribute="leading" secondItem="abc-def-ghi" secondAttribute="trailing" constant="8" id="abc-123-xyz"/>
+                                    <constraint firstItem="abc-def-ghi" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="def-456-uvw"/>
                                 </constraints>
                             </view>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="UXe-Fd-dLJ">
@@ -77,6 +86,7 @@
                         <outlet property="refreshButton" destination="K3C-gf-Ucr" id="zMe-aq-HV1"/>
                         <outlet property="statusLabel" destination="gx3-NM-7hc" id="Pya-rV-Bb3"/>
                         <outlet property="tableView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
+                        <outlet property="entitiesButton" destination="abc-def-ghi" id="stu-vwx-yz1"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
@@ -214,6 +224,62 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Zio-cy-Dou" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="1076" y="138.98050974512745"/>
+        </scene>
+        <!--Entity Settings View Controller-->
+        <scene sceneID="ent-set-scene">
+            <objects>
+                <viewController storyboardIdentifier="EntitySettingsViewController" id="ent-set-ctrl" customClass="EntitySettingsViewController" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="ent-top-guide"/>
+                        <viewControllerLayoutGuide type="bottom" id="ent-bottom-guide"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="ent-main-view">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="ent-header-view">
+                                <rect key="frame" x="0.0" y="64" width="375" height="50"/>
+                                <subviews>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Select entities to show in dashboard" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ent-status-label">
+                                        <rect key="frame" x="16" y="8" width="343" height="34"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                        <color key="textColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                </subviews>
+                                <color key="backgroundColor" white="0.95" alpha="1" colorSpace="calibratedWhite"/>
+                                <constraints>
+                                    <constraint firstItem="ent-status-label" firstAttribute="leading" secondItem="ent-header-view" secondAttribute="leading" constant="16" id="ent-lead-cons"/>
+                                    <constraint firstAttribute="trailing" secondItem="ent-status-label" secondAttribute="trailing" constant="16" id="ent-trail-cons"/>
+                                    <constraint firstItem="ent-status-label" firstAttribute="centerY" secondItem="ent-header-view" secondAttribute="centerY" id="ent-center-cons"/>
+                                    <constraint firstAttribute="height" constant="50" id="ent-height-cons"/>
+                                </constraints>
+                            </view>
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="ent-table-view">
+                                <rect key="frame" x="0.0" y="114" width="375" height="553"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                            </tableView>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstItem="ent-bottom-guide" firstAttribute="top" secondItem="ent-table-view" secondAttribute="bottom" id="ent-table-bottom"/>
+                            <constraint firstAttribute="trailing" secondItem="ent-header-view" secondAttribute="trailing" id="ent-header-trail"/>
+                            <constraint firstItem="ent-header-view" firstAttribute="leading" secondItem="ent-main-view" secondAttribute="leading" id="ent-header-lead"/>
+                            <constraint firstItem="ent-table-view" firstAttribute="leading" secondItem="ent-main-view" secondAttribute="leading" id="ent-table-lead"/>
+                            <constraint firstAttribute="trailing" secondItem="ent-table-view" secondAttribute="trailing" id="ent-table-trail"/>
+                            <constraint firstItem="ent-table-view" firstAttribute="top" secondItem="ent-header-view" secondAttribute="bottom" id="ent-table-top"/>
+                            <constraint firstItem="ent-header-view" firstAttribute="top" secondItem="ent-top-guide" secondAttribute="bottom" id="ent-header-top"/>
+                        </constraints>
+                    </view>
+                    <navigationItem key="navigationItem" id="ent-nav-item"/>
+                    <connections>
+                        <outlet property="statusLabel" destination="ent-status-label" id="ent-status-outlet"/>
+                        <outlet property="tableView" destination="ent-table-view" id="ent-table-outlet"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="ent-first-resp" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="1076" y="800"/>
         </scene>
     </scenes>
 </document>

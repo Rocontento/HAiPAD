@@ -8,9 +8,12 @@
 
 #import "DashboardViewController.h"
 #import "ConfigurationViewController.h"
+#import "EntitySettingsViewController.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
+@property (nonatomic, strong) NSArray *allEntities;
+@property (nonatomic, strong) NSSet *enabledEntityIds;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @end
@@ -22,6 +25,8 @@
     
     self.title = @"Home Assistant";
     self.entities = @[];
+    self.allEntities = @[];
+    self.enabledEntityIds = [NSSet set];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
     
@@ -31,6 +36,9 @@
     
     // Load saved configuration
     [self loadConfiguration];
+    
+    // Load entity settings
+    [self loadEntitySettings];
     
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -46,6 +54,9 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    
+    // Reload entity settings in case they changed
+    [self loadEntitySettings];
     
     if (self.homeAssistantClient.isConnected) {
         [self.homeAssistantClient fetchStates];
@@ -64,6 +75,23 @@
     } else {
         self.statusLabel.text = @"Not configured";
         self.statusLabel.textColor = [UIColor redColor];
+    }
+}
+
+- (void)loadEntitySettings {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSArray *savedEntityIds = [defaults arrayForKey:@"ha_enabled_entities"];
+    
+    if (savedEntityIds) {
+        self.enabledEntityIds = [NSSet setWithArray:savedEntityIds];
+    } else {
+        // If no settings saved, enable all entities by default
+        self.enabledEntityIds = [NSSet set];
+    }
+    
+    // Filter entities based on settings if we have entities loaded
+    if (self.allEntities.count > 0) {
+        [self filterEntitiesBasedOnSettings];
     }
 }
 
@@ -88,6 +116,33 @@
     if (self.refreshControl.isRefreshing) {
         [self.refreshControl endRefreshing];
     }
+}
+
+- (IBAction)entitiesButtonTapped:(id)sender {
+    UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
+    EntitySettingsViewController *entitiesVC = [storyboard instantiateViewControllerWithIdentifier:@"EntitySettingsViewController"];
+    
+    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:entitiesVC];
+    [self presentViewController:navController animated:YES completion:nil];
+}
+
+- (void)filterEntitiesBasedOnSettings {
+    if (self.enabledEntityIds.count == 0) {
+        // If no settings saved, show all entities
+        self.entities = self.allEntities;
+    } else {
+        // Filter entities based on enabled settings
+        NSMutableArray *filteredEntities = [NSMutableArray array];
+        for (NSDictionary *entity in self.allEntities) {
+            NSString *entityId = entity[@"entity_id"];
+            if ([self.enabledEntityIds containsObject:entityId]) {
+                [filteredEntities addObject:entity];
+            }
+        }
+        self.entities = filteredEntities;
+    }
+    
+    [self.tableView reloadData];
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -126,13 +181,14 @@
     }
     
     // Sort entities by friendly name
-    self.entities = [filteredEntities sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *obj1, NSDictionary *obj2) {
+    self.allEntities = [filteredEntities sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *obj1, NSDictionary *obj2) {
         NSString *name1 = obj1[@"attributes"][@"friendly_name"] ?: obj1[@"entity_id"];
         NSString *name2 = obj2[@"attributes"][@"friendly_name"] ?: obj2[@"entity_id"];
         return [name1 compare:name2];
     }];
     
-    [self.tableView reloadData];
+    // Apply entity filtering based on user settings
+    [self filterEntitiesBasedOnSettings];
     
     // Stop refresh control if it's active
     if (self.refreshControl.isRefreshing) {
