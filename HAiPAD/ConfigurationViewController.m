@@ -66,6 +66,15 @@
     if (accessToken) {
         self.tokenTextField.text = accessToken;
     }
+    
+    // Load column preference (default to 2 columns)
+    NSInteger columnCount = [defaults integerForKey:@"ha_column_count"];
+    if (columnCount == 0) {
+        columnCount = 2; // Default to 2 columns
+    }
+    
+    // Set segmented control to correct index (1-4 columns maps to indices 0-3)
+    self.columnsSegmentedControl.selectedSegmentIndex = columnCount - 1;
 }
 
 #pragma mark - IBActions
@@ -93,6 +102,11 @@
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setObject:url forKey:@"ha_base_url"];
     [defaults setObject:token forKey:@"ha_access_token"];
+    
+    // Save column preference (segmented control index 0-3 maps to 1-4 columns)
+    NSInteger columnCount = self.columnsSegmentedControl.selectedSegmentIndex + 1;
+    [defaults setInteger:columnCount forKey:@"ha_column_count"];
+    
     [defaults synchronize];
     
     // Connect with new configuration

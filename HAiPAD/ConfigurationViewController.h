@@ -15,6 +15,7 @@
 @property (weak, nonatomic) IBOutlet UIButton *saveButton;
 @property (weak, nonatomic) IBOutlet UIButton *testButton;
 @property (weak, nonatomic) IBOutlet UILabel *statusLabel;
+@property (weak, nonatomic) IBOutlet UISegmentedControl *columnsSegmentedControl;
 
 - (IBAction)saveButtonTapped:(id)sender;
 - (IBAction)testButtonTapped:(id)sender;
