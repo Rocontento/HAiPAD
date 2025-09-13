@@ -12,6 +12,7 @@
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
+@property (nonatomic, strong) UIRefreshControl *refreshControl;
 @end
 
 @implementation DashboardViewController
@@ -32,9 +33,15 @@
     [self loadConfiguration];
     
     // Set up refresh control for iOS 9.3.5 compatibility
-    UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
-    [refreshControl addTarget:self action:@selector(refreshButtonTapped:) forControlEvents:UIControlEventValueChanged];
-    self.tableView.refreshControl = refreshControl;
+    self.refreshControl = [[UIRefreshControl alloc] init];
+    [self.refreshControl addTarget:self action:@selector(refreshButtonTapped:) forControlEvents:UIControlEventValueChanged];
+    
+    // Use iOS 10+ property if available, otherwise use legacy method for iOS 9.3
+    if ([self.tableView respondsToSelector:@selector(setRefreshControl:)]) {
+        self.tableView.refreshControl = self.refreshControl;
+    } else {
+        [self.tableView addSubview:self.refreshControl];
+    }
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -78,8 +85,8 @@
     }
     
     // Stop refresh control if it's active
-    if (self.tableView.refreshControl.isRefreshing) {
-        [self.tableView.refreshControl endRefreshing];
+    if (self.refreshControl.isRefreshing) {
+        [self.refreshControl endRefreshing];
     }
 }
 
@@ -128,8 +135,8 @@
     [self.tableView reloadData];
     
     // Stop refresh control if it's active
-    if (self.tableView.refreshControl.isRefreshing) {
-        [self.tableView.refreshControl endRefreshing];
+    if (self.refreshControl.isRefreshing) {
+        [self.refreshControl endRefreshing];
     }
 }
 
@@ -138,8 +145,8 @@
     self.statusLabel.textColor = [UIColor redColor];
     
     // Stop refresh control if it's active
-    if (self.tableView.refreshControl.isRefreshing) {
-        [self.tableView.refreshControl endRefreshing];
+    if (self.refreshControl.isRefreshing) {
+        [self.refreshControl endRefreshing];
     }
     
     // Show alert for errors
