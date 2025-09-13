@@ -238,6 +238,21 @@
                                                 <color key="textColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Dashboard Columns:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="columns-label">
+                                                <rect key="frame" x="20" y="353" width="148" height="21"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="1" translatesAutoresizingMaskIntoConstraints="NO" id="columns-segmented">
+                                                <rect key="frame" x="20" y="382" width="335" height="29"/>
+                                                <segments>
+                                                    <segment title="1"/>
+                                                    <segment title="2"/>
+                                                    <segment title="3"/>
+                                                    <segment title="4"/>
+                                                </segments>
+                                            </segmentedControl>
                                         </subviews>
                                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                         <constraints>
@@ -260,6 +275,11 @@
                                             <constraint firstItem="7vr-Jn-e8E" firstAttribute="width" secondItem="qol-gI-N0U" secondAttribute="width" id="gvM-NW-ftn"/>
                                             <constraint firstAttribute="trailing" secondItem="jNY-rK-XQ3" secondAttribute="trailing" constant="20" id="rBy-3k-1zF"/>
                                             <constraint firstItem="jNY-rK-XQ3" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="veF-QJ-X3K"/>
+                                            <constraint firstItem="columns-label" firstAttribute="top" secondItem="jNY-rK-XQ3" secondAttribute="bottom" constant="30" id="col-label-top"/>
+                                            <constraint firstItem="columns-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="col-label-lead"/>
+                                            <constraint firstItem="columns-segmented" firstAttribute="top" secondItem="columns-label" secondAttribute="bottom" constant="8" id="col-seg-top"/>
+                                            <constraint firstItem="columns-segmented" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="col-seg-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="columns-segmented" secondAttribute="trailing" constant="20" id="col-seg-trail"/>
                                         </constraints>
                                     </view>
                                 </subviews>
@@ -288,6 +308,7 @@
                         <outlet property="testButton" destination="7vr-Jn-e8E" id="eMF-dE-iaq"/>
                         <outlet property="tokenTextField" destination="1iI-ap-5KH" id="f3Z-sX-VrP"/>
                         <outlet property="urlTextField" destination="j0c-ux-7iy" id="qYh-Tg-jGm"/>
+                        <outlet property="columnsSegmentedControl" destination="columns-segmented" id="columns-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Zio-cy-Dou" sceneMemberID="firstResponder"/>

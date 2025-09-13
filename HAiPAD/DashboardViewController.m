@@ -17,6 +17,7 @@
 @property (nonatomic, strong) NSSet *enabledEntityIds;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
+@property (nonatomic, assign) NSInteger columnCount;
 @end
 
 @implementation DashboardViewController
@@ -60,6 +61,12 @@
     // Reload entity settings in case they changed
     [self loadEntitySettings];
     
+    // Reload configuration in case column count changed
+    [self loadConfiguration];
+    
+    // Reload layout to apply any column changes
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    
     if (self.homeAssistantClient.isConnected) {
         [self.homeAssistantClient fetchStates];
     }
@@ -69,6 +76,12 @@
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSString *baseURL = [defaults stringForKey:@"ha_base_url"];
     NSString *accessToken = [defaults stringForKey:@"ha_access_token"];
+    
+    // Load column count preference (default to 2 columns)
+    self.columnCount = [defaults integerForKey:@"ha_column_count"];
+    if (self.columnCount == 0) {
+        self.columnCount = 2; // Default to 2 columns
+    }
     
     if (baseURL && accessToken) {
         [self.homeAssistantClient connectWithBaseURL:baseURL accessToken:accessToken];
@@ -269,19 +282,13 @@
 #pragma mark - UICollectionViewDelegateFlowLayout
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    // Calculate cell size for 2 columns on iPad, 1 on iPhone
+    // Calculate cell size based on user's column preference
     CGFloat padding = 16.0;
     CGFloat interItemSpacing = 12.0;
-    CGFloat availableWidth = collectionView.bounds.size.width - (2 * padding) - interItemSpacing;
+    CGFloat availableWidth = collectionView.bounds.size.width - (2 * padding) - ((self.columnCount - 1) * interItemSpacing);
+    CGFloat cellWidth = availableWidth / self.columnCount;
     
-    // For iPad (or wide screens), use 2 columns
-    if (collectionView.bounds.size.width > 500) {
-        CGFloat cellWidth = availableWidth / 2.0;
-        return CGSizeMake(cellWidth, 100.0);
-    } else {
-        // For iPhone, use 1 column
-        return CGSizeMake(availableWidth, 100.0);
-    }
+    return CGSizeMake(cellWidth, 100.0);
 }
 
 - (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
