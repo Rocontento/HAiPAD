@@ -31,5 +31,6 @@
 - (void)disconnect;
 - (void)fetchStates;
 - (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId;
+- (void)callClimateService:(NSString *)service entityId:(NSString *)entityId temperature:(float)temperature;
 
 @end
