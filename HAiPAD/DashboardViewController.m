@@ -273,6 +273,9 @@
         [self showCoverControlForEntity:entity];
     } else if ([entityId hasPrefix:@"lock."]) {
         [self showLockControlForEntity:entity];
+    } else if ([entityId hasPrefix:@"sensor."] || [entityId hasPrefix:@"binary_sensor."]) {
+        // Sensors are read-only, show info instead
+        [self showSensorInfoForEntity:entity];
     }
 }
 
@@ -349,43 +352,57 @@
     NSNumber *targetTemp = entity[@"attributes"][@"temperature"];
     NSString *unit = entity[@"attributes"][@"temperature_unit"] ?: @"°C";
     
+    NSString *message;
+    if (currentTemp && targetTemp) {
+        message = [NSString stringWithFormat:@"Current: %.1f%@\nTarget: %.1f%@", 
+                  currentTemp.floatValue, unit, targetTemp.floatValue, unit];
+    } else if (currentTemp) {
+        message = [NSString stringWithFormat:@"Current: %.1f%@\nState: %@", 
+                  currentTemp.floatValue, unit, [state capitalizedString]];
+    } else {
+        message = [NSString stringWithFormat:@"State: %@", [state capitalizedString]];
+    }
+    
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:[NSString stringWithFormat:@"Current: %.1f%@\nTarget: %.1f%@", 
-                                                                           currentTemp.floatValue, unit, targetTemp.floatValue, unit]
+                                                                   message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
     
-    // Add temperature adjustment actions
-    UIAlertAction *increaseTempAction = [UIAlertAction actionWithTitle:@"Increase Temperature (+1°)"
-                                                                 style:UIAlertActionStyleDefault
-                                                               handler:^(UIAlertAction *action) {
-        float newTemp = targetTemp.floatValue + 1.0;
-        [self setClimateTemperature:newTemp forEntityId:entityId];
-    }];
+    // Only add temperature controls if we have a target temperature
+    if (targetTemp) {
+        UIAlertAction *increaseTempAction = [UIAlertAction actionWithTitle:@"Increase Temperature (+1°)"
+                                                                     style:UIAlertActionStyleDefault
+                                                                   handler:^(UIAlertAction *action) {
+            float newTemp = targetTemp.floatValue + 1.0;
+            [self setClimateTemperature:newTemp forEntityId:entityId];
+        }];
+        
+        UIAlertAction *decreaseTempAction = [UIAlertAction actionWithTitle:@"Decrease Temperature (-1°)"
+                                                                     style:UIAlertActionStyleDefault
+                                                                   handler:^(UIAlertAction *action) {
+            float newTemp = targetTemp.floatValue - 1.0;
+            [self setClimateTemperature:newTemp forEntityId:entityId];
+        }];
+        
+        [alert addAction:increaseTempAction];
+        [alert addAction:decreaseTempAction];
+    }
     
-    UIAlertAction *decreaseTempAction = [UIAlertAction actionWithTitle:@"Decrease Temperature (-1°)"
-                                                                 style:UIAlertActionStyleDefault
-                                                               handler:^(UIAlertAction *action) {
-        float newTemp = targetTemp.floatValue - 1.0;
-        [self setClimateTemperature:newTemp forEntityId:entityId];
-    }];
-    
-    // Add on/off toggle
-    NSString *toggleTitle = [state isEqualToString:@"off"] ? @"Turn On" : @"Turn Off";
-    UIAlertAction *toggleAction = [UIAlertAction actionWithTitle:toggleTitle
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:^(UIAlertAction *action) {
-        if ([state isEqualToString:@"off"]) {
-            [self.homeAssistantClient callService:@"climate" service:@"turn_on" entityId:entityId];
-        } else {
-            [self.homeAssistantClient callService:@"climate" service:@"turn_off" entityId:entityId];
-        }
-    }];
+    // Add on/off toggle if the device supports it
+    if (![state isEqualToString:@"unavailable"]) {
+        NSString *toggleTitle = [state isEqualToString:@"off"] ? @"Turn On" : @"Turn Off";
+        UIAlertAction *toggleAction = [UIAlertAction actionWithTitle:toggleTitle
+                                                               style:UIAlertActionStyleDefault
+                                                             handler:^(UIAlertAction *action) {
+            if ([state isEqualToString:@"off"]) {
+                [self.homeAssistantClient callService:@"climate" service:@"turn_on" entityId:entityId];
+            } else {
+                [self.homeAssistantClient callService:@"climate" service:@"turn_off" entityId:entityId];
+            }
+        }];
+        [alert addAction:toggleAction];
+    }
     
     UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:increaseTempAction];
-    [alert addAction:decreaseTempAction];
-    [alert addAction:toggleAction];
     [alert addAction:cancelAction];
     
     [self presentViewController:alert animated:YES completion:nil];
@@ -475,6 +492,49 @@
             cell.transform = CGAffineTransformIdentity;
         }];
     }];
+}
+
+- (void)showSensorInfoForEntity:(NSDictionary *)entity {
+    NSString *entityId = entity[@"entity_id"];
+    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+    NSString *state = entity[@"state"];
+    
+    NSMutableString *message = [NSMutableString stringWithFormat:@"Current State: %@", state];
+    
+    // Add useful attributes for sensors
+    NSDictionary *attributes = entity[@"attributes"];
+    if (attributes) {
+        NSString *unit = attributes[@"unit_of_measurement"];
+        NSString *deviceClass = attributes[@"device_class"];
+        NSString *lastChanged = entity[@"last_changed"];
+        
+        if (unit) {
+            [message appendFormat:@"\nUnit: %@", unit];
+        }
+        if (deviceClass) {
+            [message appendFormat:@"\nType: %@", [deviceClass capitalizedString]];
+        }
+        if (lastChanged) {
+            // Format the timestamp
+            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+            formatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
+            NSDate *date = [formatter dateFromString:lastChanged];
+            if (date) {
+                formatter.dateStyle = NSDateFormatterMediumStyle;
+                formatter.timeStyle = NSDateFormatterShortStyle;
+                [message appendFormat:@"\nLast Updated: %@", [formatter stringFromDate:date]];
+            }
+        }
+    }
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                   message:message
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+    [alert addAction:okAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 @end
