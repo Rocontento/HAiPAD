@@ -65,10 +65,79 @@
                                     <constraint firstItem="abc-def-ghi" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="def-456-uvw"/>
                                 </constraints>
                             </view>
-                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="UXe-Fd-dLJ">
+                            <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="UXe-Fd-dLJ">
                                 <rect key="frame" x="0.0" y="80" width="375" height="587"/>
-                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
-                            </tableView>
+                                <color key="backgroundColor" white="0.95" alpha="1" colorSpace="calibratedWhite"/>
+                                <collectionViewFlowLayout key="collectionViewLayout" minimumLineSpacing="12" minimumInteritemSpacing="12" id="flow-layout">
+                                    <size key="itemSize" width="160" height="100"/>
+                                    <size key="headerReferenceSize" width="0.0" height="0.0"/>
+                                    <size key="footerReferenceSize" width="0.0" height="0.0"/>
+                                    <inset key="sectionInset" minX="16" minY="16" maxX="16" maxY="16"/>
+                                </collectionViewFlowLayout>
+                                <cells>
+                                    <collectionViewCell opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" reuseIdentifier="EntityCardCell" id="card-cell" customClass="EntityCardCell">
+                                        <rect key="frame" x="16" y="16" width="160" height="100"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <view key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center">
+                                            <rect key="frame" x="0.0" y="0.0" width="160" height="100"/>
+                                            <autoresizingMask key="autoresizingMask"/>
+                                            <subviews>
+                                                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="card-container">
+                                                    <rect key="frame" x="4" y="4" width="152" height="92"/>
+                                                    <subviews>
+                                                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Entity Name" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="2" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="name-label">
+                                                            <rect key="frame" x="12" y="12" width="98" height="21"/>
+                                                            <fontDescription key="fontDescription" type="system" weight="medium" pointSize="16"/>
+                                                            <nil key="textColor"/>
+                                                            <nil key="highlightedColor"/>
+                                                        </label>
+                                                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="State" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="state-label">
+                                                            <rect key="frame" x="12" y="59" width="98" height="21"/>
+                                                            <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                                            <color key="textColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                                                            <nil key="highlightedColor"/>
+                                                        </label>
+                                                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="info-button">
+                                                            <rect key="frame" x="122" y="12" width="20" height="20"/>
+                                                            <constraints>
+                                                                <constraint firstAttribute="width" constant="20" id="info-width"/>
+                                                                <constraint firstAttribute="height" constant="20" id="info-height"/>
+                                                            </constraints>
+                                                            <fontDescription key="fontDescription" type="system" pointSize="12"/>
+                                                            <state key="normal" title="ⓘ">
+                                                                <color key="titleColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                                                            </state>
+                                                        </button>
+                                                    </subviews>
+                                                    <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                                    <constraints>
+                                                        <constraint firstItem="name-label" firstAttribute="leading" secondItem="card-container" secondAttribute="leading" constant="12" id="name-lead"/>
+                                                        <constraint firstItem="name-label" firstAttribute="top" secondItem="card-container" secondAttribute="top" constant="12" id="name-top"/>
+                                                        <constraint firstItem="info-button" firstAttribute="top" secondItem="card-container" secondAttribute="top" constant="12" id="info-top"/>
+                                                        <constraint firstAttribute="trailing" secondItem="info-button" secondAttribute="trailing" constant="10" id="info-trail"/>
+                                                        <constraint firstItem="info-button" firstAttribute="leading" secondItem="name-label" secondAttribute="trailing" constant="12" id="name-info-space"/>
+                                                        <constraint firstItem="state-label" firstAttribute="leading" secondItem="card-container" secondAttribute="leading" constant="12" id="state-lead"/>
+                                                        <constraint firstAttribute="bottom" secondItem="state-label" secondAttribute="bottom" constant="12" id="state-bottom"/>
+                                                        <constraint firstItem="info-button" firstAttribute="leading" secondItem="state-label" secondAttribute="trailing" constant="12" id="state-info-space"/>
+                                                    </constraints>
+                                                </view>
+                                            </subviews>
+                                        </view>
+                                        <constraints>
+                                            <constraint firstItem="card-container" firstAttribute="leading" secondItem="card-cell" secondAttribute="leading" constant="4" id="container-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="card-container" secondAttribute="trailing" constant="4" id="container-trail"/>
+                                            <constraint firstItem="card-container" firstAttribute="top" secondItem="card-cell" secondAttribute="top" constant="4" id="container-top"/>
+                                            <constraint firstAttribute="bottom" secondItem="card-container" secondAttribute="bottom" constant="4" id="container-bottom"/>
+                                        </constraints>
+                                        <connections>
+                                            <outlet property="cardContainerView" destination="card-container" id="card-outlet"/>
+                                            <outlet property="nameLabel" destination="name-label" id="name-outlet"/>
+                                            <outlet property="stateLabel" destination="state-label" id="state-outlet"/>
+                                            <outlet property="infoButton" destination="info-button" id="info-outlet"/>
+                                        </connections>
+                                    </collectionViewCell>
+                                </cells>
+                            </collectionView>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
@@ -85,7 +154,7 @@
                         <outlet property="configButton" destination="Bfi-3H-dKE" id="s3R-6H-QC5"/>
                         <outlet property="refreshButton" destination="K3C-gf-Ucr" id="zMe-aq-HV1"/>
                         <outlet property="statusLabel" destination="gx3-NM-7hc" id="Pya-rV-Bb3"/>
-                        <outlet property="tableView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
+                        <outlet property="collectionView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
                         <outlet property="entitiesButton" destination="abc-def-ghi" id="stu-vwx-yz1"/>
                     </connections>
                 </viewController>

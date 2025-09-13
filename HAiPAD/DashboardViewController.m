@@ -9,6 +9,7 @@
 #import "DashboardViewController.h"
 #import "ConfigurationViewController.h"
 #import "EntitySettingsViewController.h"
+#import "EntityCardCell.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
@@ -30,9 +31,13 @@
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
     
-    // Set up table view
-    self.tableView.dataSource = self;
-    self.tableView.delegate = self;
+    // Set up collection view
+    self.collectionView.dataSource = self;
+    self.collectionView.delegate = self;
+    self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    
+    // Register cell from storyboard
+    // The cell will be registered automatically since it's defined in the storyboard
     
     // Load saved configuration
     [self loadConfiguration];
@@ -44,12 +49,9 @@
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refreshButtonTapped:) forControlEvents:UIControlEventValueChanged];
     
-    // Use iOS 10+ property if available, otherwise use legacy method for iOS 9.3
-    if ([self.tableView respondsToSelector:@selector(setRefreshControl:)]) {
-        self.tableView.refreshControl = self.refreshControl;
-    } else {
-        [self.tableView addSubview:self.refreshControl];
-    }
+    // Add refresh control to collection view
+    [self.collectionView addSubview:self.refreshControl];
+    [self.collectionView sendSubviewToBack:self.refreshControl];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -142,7 +144,7 @@
         self.entities = filteredEntities;
     }
     
-    [self.tableView reloadData];
+    [self.collectionView reloadData];
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -214,51 +216,31 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 
-#pragma mark - UITableViewDataSource
+#pragma mark - UICollectionViewDataSource
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     return self.entities.count;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"EntityCell"];
-    if (!cell) {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"EntityCell"];
-    }
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
+    EntityCardCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"EntityCardCell" forIndexPath:indexPath];
     
-    NSDictionary *entity = self.entities[indexPath.row];
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
+    NSDictionary *entity = self.entities[indexPath.item];
+    [cell configureWithEntity:entity];
     
-    cell.textLabel.text = friendlyName;
-    cell.detailTextLabel.text = state;
-    
-    // Set appropriate accessory and styling based on entity type
-    if ([entityId hasPrefix:@"light."] || [entityId hasPrefix:@"switch."] || [entityId hasPrefix:@"fan."]) {
-        cell.accessoryType = UITableViewCellAccessoryDetailButton;
-        if ([state isEqualToString:@"on"]) {
-            cell.backgroundColor = [UIColor colorWithRed:1.0 green:1.0 blue:0.8 alpha:1.0]; // Light yellow
-        } else {
-            cell.backgroundColor = [UIColor whiteColor];
-        }
-    } else if ([entityId hasPrefix:@"cover."]) {
-        cell.accessoryType = UITableViewCellAccessoryDetailButton;
-        cell.backgroundColor = [UIColor whiteColor];
-    } else {
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.backgroundColor = [UIColor whiteColor];
-    }
+    // Add target for info button
+    [cell.infoButton addTarget:self action:@selector(infoButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    cell.infoButton.tag = indexPath.item;
     
     return cell;
 }
 
-#pragma mark - UITableViewDelegate
+#pragma mark - UICollectionViewDelegate
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    [collectionView deselectItemAtIndexPath:indexPath animated:YES];
     
-    NSDictionary *entity = self.entities[indexPath.row];
+    NSDictionary *entity = self.entities[indexPath.item];
     NSString *entityId = entity[@"entity_id"];
     NSString *state = entity[@"state"];
     
@@ -284,32 +266,67 @@
     }
 }
 
-- (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *entity = self.entities[indexPath.row];
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
+#pragma mark - UICollectionViewDelegateFlowLayout
+
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    // Calculate cell size for 2 columns on iPad, 1 on iPhone
+    CGFloat padding = 16.0;
+    CGFloat interItemSpacing = 12.0;
+    CGFloat availableWidth = collectionView.bounds.size.width - (2 * padding) - interItemSpacing;
     
-    // Show entity details
-    NSString *message = [NSString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
-    
-    NSDictionary *attributes = entity[@"attributes"];
-    if (attributes) {
-        NSMutableString *attributesString = [NSMutableString stringWithString:message];
-        [attributesString appendString:@"\n\nAttributes:"];
-        for (NSString *key in attributes) {
-            id value = attributes[key];
-            [attributesString appendFormat:@"\n%@: %@", key, value];
-        }
-        message = attributesString;
+    // For iPad (or wide screens), use 2 columns
+    if (collectionView.bounds.size.width > 500) {
+        CGFloat cellWidth = availableWidth / 2.0;
+        return CGSizeMake(cellWidth, 100.0);
+    } else {
+        // For iPhone, use 1 column
+        return CGSizeMake(availableWidth, 100.0);
     }
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:okAction];
-    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
+    return UIEdgeInsetsMake(16, 16, 16, 16);
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section {
+    return 12.0;
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
+    return 12.0;
+}
+
+#pragma mark - Action Methods
+
+- (void)infoButtonTapped:(UIButton *)sender {
+    NSInteger index = sender.tag;
+    if (index < self.entities.count) {
+        NSDictionary *entity = self.entities[index];
+        NSString *entityId = entity[@"entity_id"];
+        NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+        NSString *state = entity[@"state"];
+        
+        // Show entity details
+        NSString *message = [NSString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
+        
+        NSDictionary *attributes = entity[@"attributes"];
+        if (attributes) {
+            NSMutableString *attributesString = [NSMutableString stringWithString:message];
+            [attributesString appendString:@"\n\nAttributes:"];
+            for (NSString *key in attributes) {
+                id value = attributes[key];
+                [attributesString appendFormat:@"\n%@: %@", key, value];
+            }
+            message = attributesString;
+        }
+        
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                       message:message
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+        [alert addAction:okAction];
+        [self presentViewController:alert animated:YES completion:nil];
+    }
 }
 
 @end

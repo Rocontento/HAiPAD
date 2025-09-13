@@ -9,9 +9,9 @@
 #import <UIKit/UIKit.h>
 #import "HomeAssistantClient.h"
 
-@interface DashboardViewController : UIViewController <HomeAssistantClientDelegate, UITableViewDataSource, UITableViewDelegate>
+@interface DashboardViewController : UIViewController <HomeAssistantClientDelegate, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout>
 
-@property (weak, nonatomic) IBOutlet UITableView *tableView;
+@property (weak, nonatomic) IBOutlet UICollectionView *collectionView;
 @property (weak, nonatomic) IBOutlet UILabel *statusLabel;
 @property (weak, nonatomic) IBOutlet UIButton *configButton;
 @property (weak, nonatomic) IBOutlet UIButton *refreshButton;
