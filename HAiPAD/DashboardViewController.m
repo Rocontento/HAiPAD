@@ -8,9 +8,13 @@
 
 #import "DashboardViewController.h"
 #import "ConfigurationViewController.h"
+#import "EntitySettingsViewController.h"
+#import "EntityCardCell.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
+@property (nonatomic, strong) NSArray *allEntities;
+@property (nonatomic, strong) NSSet *enabledEntityIds;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @end
@@ -22,30 +26,39 @@
     
     self.title = @"Home Assistant";
     self.entities = @[];
+    self.allEntities = @[];
+    self.enabledEntityIds = [NSSet set];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
     
-    // Set up table view
-    self.tableView.dataSource = self;
-    self.tableView.delegate = self;
+    // Set up collection view
+    self.collectionView.dataSource = self;
+    self.collectionView.delegate = self;
+    self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    
+    // Register cell from storyboard
+    // The cell will be registered automatically since it's defined in the storyboard
     
     // Load saved configuration
     [self loadConfiguration];
+    
+    // Load entity settings
+    [self loadEntitySettings];
     
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refreshButtonTapped:) forControlEvents:UIControlEventValueChanged];
     
-    // Use iOS 10+ property if available, otherwise use legacy method for iOS 9.3
-    if ([self.tableView respondsToSelector:@selector(setRefreshControl:)]) {
-        self.tableView.refreshControl = self.refreshControl;
-    } else {
-        [self.tableView addSubview:self.refreshControl];
-    }
+    // Add refresh control to collection view
+    [self.collectionView addSubview:self.refreshControl];
+    [self.collectionView sendSubviewToBack:self.refreshControl];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    
+    // Reload entity settings in case they changed
+    [self loadEntitySettings];
     
     if (self.homeAssistantClient.isConnected) {
         [self.homeAssistantClient fetchStates];
@@ -64,6 +77,23 @@
     } else {
         self.statusLabel.text = @"Not configured";
         self.statusLabel.textColor = [UIColor redColor];
+    }
+}
+
+- (void)loadEntitySettings {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSArray *savedEntityIds = [defaults arrayForKey:@"ha_enabled_entities"];
+    
+    if (savedEntityIds) {
+        self.enabledEntityIds = [NSSet setWithArray:savedEntityIds];
+    } else {
+        // If no settings saved, enable all entities by default
+        self.enabledEntityIds = [NSSet set];
+    }
+    
+    // Filter entities based on settings if we have entities loaded
+    if (self.allEntities.count > 0) {
+        [self filterEntitiesBasedOnSettings];
     }
 }
 
@@ -88,6 +118,33 @@
     if (self.refreshControl.isRefreshing) {
         [self.refreshControl endRefreshing];
     }
+}
+
+- (IBAction)entitiesButtonTapped:(id)sender {
+    UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
+    EntitySettingsViewController *entitiesVC = [storyboard instantiateViewControllerWithIdentifier:@"EntitySettingsViewController"];
+    
+    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:entitiesVC];
+    [self presentViewController:navController animated:YES completion:nil];
+}
+
+- (void)filterEntitiesBasedOnSettings {
+    if (self.enabledEntityIds.count == 0) {
+        // If no settings saved, show all entities
+        self.entities = self.allEntities;
+    } else {
+        // Filter entities based on enabled settings
+        NSMutableArray *filteredEntities = [NSMutableArray array];
+        for (NSDictionary *entity in self.allEntities) {
+            NSString *entityId = entity[@"entity_id"];
+            if ([self.enabledEntityIds containsObject:entityId]) {
+                [filteredEntities addObject:entity];
+            }
+        }
+        self.entities = filteredEntities;
+    }
+    
+    [self.collectionView reloadData];
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -126,13 +183,14 @@
     }
     
     // Sort entities by friendly name
-    self.entities = [filteredEntities sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *obj1, NSDictionary *obj2) {
+    self.allEntities = [filteredEntities sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *obj1, NSDictionary *obj2) {
         NSString *name1 = obj1[@"attributes"][@"friendly_name"] ?: obj1[@"entity_id"];
         NSString *name2 = obj2[@"attributes"][@"friendly_name"] ?: obj2[@"entity_id"];
         return [name1 compare:name2];
     }];
     
-    [self.tableView reloadData];
+    // Apply entity filtering based on user settings
+    [self filterEntitiesBasedOnSettings];
     
     // Stop refresh control if it's active
     if (self.refreshControl.isRefreshing) {
@@ -158,51 +216,31 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 
-#pragma mark - UITableViewDataSource
+#pragma mark - UICollectionViewDataSource
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     return self.entities.count;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"EntityCell"];
-    if (!cell) {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"EntityCell"];
-    }
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
+    EntityCardCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"EntityCardCell" forIndexPath:indexPath];
     
-    NSDictionary *entity = self.entities[indexPath.row];
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
+    NSDictionary *entity = self.entities[indexPath.item];
+    [cell configureWithEntity:entity];
     
-    cell.textLabel.text = friendlyName;
-    cell.detailTextLabel.text = state;
-    
-    // Set appropriate accessory and styling based on entity type
-    if ([entityId hasPrefix:@"light."] || [entityId hasPrefix:@"switch."] || [entityId hasPrefix:@"fan."]) {
-        cell.accessoryType = UITableViewCellAccessoryDetailButton;
-        if ([state isEqualToString:@"on"]) {
-            cell.backgroundColor = [UIColor colorWithRed:1.0 green:1.0 blue:0.8 alpha:1.0]; // Light yellow
-        } else {
-            cell.backgroundColor = [UIColor whiteColor];
-        }
-    } else if ([entityId hasPrefix:@"cover."]) {
-        cell.accessoryType = UITableViewCellAccessoryDetailButton;
-        cell.backgroundColor = [UIColor whiteColor];
-    } else {
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.backgroundColor = [UIColor whiteColor];
-    }
+    // Add target for info button
+    [cell.infoButton addTarget:self action:@selector(infoButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    cell.infoButton.tag = indexPath.item;
     
     return cell;
 }
 
-#pragma mark - UITableViewDelegate
+#pragma mark - UICollectionViewDelegate
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    [collectionView deselectItemAtIndexPath:indexPath animated:YES];
     
-    NSDictionary *entity = self.entities[indexPath.row];
+    NSDictionary *entity = self.entities[indexPath.item];
     NSString *entityId = entity[@"entity_id"];
     NSString *state = entity[@"state"];
     
@@ -228,32 +266,67 @@
     }
 }
 
-- (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *entity = self.entities[indexPath.row];
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
+#pragma mark - UICollectionViewDelegateFlowLayout
+
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    // Calculate cell size for 2 columns on iPad, 1 on iPhone
+    CGFloat padding = 16.0;
+    CGFloat interItemSpacing = 12.0;
+    CGFloat availableWidth = collectionView.bounds.size.width - (2 * padding) - interItemSpacing;
     
-    // Show entity details
-    NSString *message = [NSString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
-    
-    NSDictionary *attributes = entity[@"attributes"];
-    if (attributes) {
-        NSMutableString *attributesString = [NSMutableString stringWithString:message];
-        [attributesString appendString:@"\n\nAttributes:"];
-        for (NSString *key in attributes) {
-            id value = attributes[key];
-            [attributesString appendFormat:@"\n%@: %@", key, value];
-        }
-        message = attributesString;
+    // For iPad (or wide screens), use 2 columns
+    if (collectionView.bounds.size.width > 500) {
+        CGFloat cellWidth = availableWidth / 2.0;
+        return CGSizeMake(cellWidth, 100.0);
+    } else {
+        // For iPhone, use 1 column
+        return CGSizeMake(availableWidth, 100.0);
     }
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:okAction];
-    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
+    return UIEdgeInsetsMake(16, 16, 16, 16);
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section {
+    return 12.0;
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
+    return 12.0;
+}
+
+#pragma mark - Action Methods
+
+- (void)infoButtonTapped:(UIButton *)sender {
+    NSInteger index = sender.tag;
+    if (index < self.entities.count) {
+        NSDictionary *entity = self.entities[index];
+        NSString *entityId = entity[@"entity_id"];
+        NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+        NSString *state = entity[@"state"];
+        
+        // Show entity details
+        NSString *message = [NSString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
+        
+        NSDictionary *attributes = entity[@"attributes"];
+        if (attributes) {
+            NSMutableString *attributesString = [NSMutableString stringWithString:message];
+            [attributesString appendString:@"\n\nAttributes:"];
+            for (NSString *key in attributes) {
+                id value = attributes[key];
+                [attributesString appendFormat:@"\n%@: %@", key, value];
+            }
+            message = attributesString;
+        }
+        
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                       message:message
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+        [alert addAction:okAction];
+        [self presentViewController:alert animated:YES completion:nil];
+    }
 }
 
 @end
