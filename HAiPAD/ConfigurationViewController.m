@@ -10,7 +10,7 @@
 #import "HomeAssistantClient.h"
 
 @interface ConfigurationViewController () <HomeAssistantClientDelegate>
-
+@property (nonatomic, strong) HomeAssistantClient *testClient;
 @end
 
 @implementation ConfigurationViewController
@@ -128,9 +128,9 @@
     }
     
     // Test connection without saving
-    HomeAssistantClient *testClient = [[HomeAssistantClient alloc] init];
-    testClient.delegate = self;
-    [testClient connectWithBaseURL:url accessToken:token];
+    self.testClient = [[HomeAssistantClient alloc] init];
+    self.testClient.delegate = self;
+    [self.testClient connectWithBaseURL:url accessToken:token];
     
     self.statusLabel.text = @"Testing connection...";
     self.statusLabel.textColor = [UIColor orangeColor];
@@ -141,7 +141,20 @@
 }
 
 - (IBAction)cancelButtonTapped:(id)sender {
+    [self cleanupTestClient];
     [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)cleanupTestClient {
+    if (self.testClient) {
+        self.testClient.delegate = nil;
+        self.testClient = nil;
+    }
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [self cleanupTestClient];
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -153,6 +166,11 @@
     // Re-enable buttons
     self.saveButton.enabled = YES;
     self.testButton.enabled = YES;
+    
+    // Clean up test client if this was a test
+    if (client == self.testClient) {
+        [self cleanupTestClient];
+    }
     
     // If this was a save operation, dismiss the view controller
     if (client == [HomeAssistantClient sharedClient]) {
@@ -169,6 +187,11 @@
     // Re-enable buttons
     self.saveButton.enabled = YES;
     self.testButton.enabled = YES;
+    
+    // Clean up test client if this was a test
+    if (client == self.testClient) {
+        [self cleanupTestClient];
+    }
 }
 
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStates:(NSArray *)states {
