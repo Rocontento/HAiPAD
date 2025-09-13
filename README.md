@@ -78,6 +78,26 @@ The app displays and allows interaction with:
 
 The app includes `NSAllowsArbitraryLoads` to support HTTP connections to local Home Assistant instances.
 
+## CI/CD - GitHub Actions
+
+This repository includes automated GitHub Actions for building iOS applications:
+
+- ✅ **Automatic Builds**: Validates code compilation on every push/PR
+- 📱 **IPA Generation**: Creates unsigned IPAs for development testing
+- 🔐 **Code Signing Support**: Can create signed IPAs when Apple Developer certificates are configured
+- 📊 **Build Artifacts**: Automatically uploads build outputs for download
+
+### Quick Start
+The GitHub Actions workflow runs automatically. For signed IPA creation, see [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md) for detailed setup instructions.
+
+### Manual Builds
+You can manually trigger builds from the GitHub Actions tab:
+1. Go to **Actions** → **iOS Build and Archive**
+2. Click **Run workflow**
+3. Optionally enable IPA creation (requires certificates)
+
+For complete setup instructions including code signing configuration, see: **[GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)**
+
 ## License
 
 This project is open source and available under the MIT License.
