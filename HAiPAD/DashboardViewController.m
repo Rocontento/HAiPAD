@@ -158,7 +158,7 @@
     self.statusLabel.text = @"Disconnected";
     self.statusLabel.textColor = [UIColor redColor];
     self.entities = @[];
-    [self.tableView reloadData];
+    [self.collectionView reloadData];
 }
 
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStates:(NSArray *)states {
