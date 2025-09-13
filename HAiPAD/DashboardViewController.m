@@ -253,6 +253,10 @@
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     [collectionView deselectItemAtIndexPath:indexPath animated:YES];
     
+    // Add visual feedback for the tap
+    EntityCardCell *cell = (EntityCardCell *)[collectionView cellForItemAtIndexPath:indexPath];
+    [self animateCardTap:cell];
+    
     NSDictionary *entity = self.entities[indexPath.item];
     NSString *entityId = entity[@"entity_id"];
     NSString *state = entity[@"state"];
@@ -276,6 +280,15 @@
         } else {
             [self.homeAssistantClient callService:@"fan" service:@"turn_on" entityId:entityId];
         }
+    } else if ([entityId hasPrefix:@"climate."]) {
+        [self showClimateControlForEntity:entity];
+    } else if ([entityId hasPrefix:@"cover."]) {
+        [self showCoverControlForEntity:entity];
+    } else if ([entityId hasPrefix:@"lock."]) {
+        [self showLockControlForEntity:entity];
+    } else if ([entityId hasPrefix:@"sensor."] || [entityId hasPrefix:@"binary_sensor."]) {
+        // Sensors are read-only, show info instead
+        [self showSensorInfoForEntity:entity];
     }
 }
 
@@ -334,6 +347,201 @@
         [alert addAction:okAction];
         [self presentViewController:alert animated:YES completion:nil];
     }
+}
+
+#pragma mark - Entity Control Methods
+
+- (void)showClimateControlForEntity:(NSDictionary *)entity {
+    NSString *entityId = entity[@"entity_id"];
+    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+    NSString *state = entity[@"state"];
+    NSNumber *currentTemp = entity[@"attributes"][@"current_temperature"];
+    NSNumber *targetTemp = entity[@"attributes"][@"temperature"];
+    NSString *unit = entity[@"attributes"][@"temperature_unit"] ?: @"°C";
+    
+    NSString *message;
+    if (currentTemp && targetTemp) {
+        message = [NSString stringWithFormat:@"Current: %.1f%@\nTarget: %.1f%@", 
+                  currentTemp.floatValue, unit, targetTemp.floatValue, unit];
+    } else if (currentTemp) {
+        message = [NSString stringWithFormat:@"Current: %.1f%@\nState: %@", 
+                  currentTemp.floatValue, unit, [state capitalizedString]];
+    } else {
+        message = [NSString stringWithFormat:@"State: %@", [state capitalizedString]];
+    }
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                   message:message
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    // Only add temperature controls if we have a target temperature
+    if (targetTemp) {
+        UIAlertAction *increaseTempAction = [UIAlertAction actionWithTitle:@"Increase Temperature (+1°)"
+                                                                     style:UIAlertActionStyleDefault
+                                                                   handler:^(UIAlertAction *action) {
+            float newTemp = targetTemp.floatValue + 1.0;
+            [self setClimateTemperature:newTemp forEntityId:entityId];
+        }];
+        
+        UIAlertAction *decreaseTempAction = [UIAlertAction actionWithTitle:@"Decrease Temperature (-1°)"
+                                                                     style:UIAlertActionStyleDefault
+                                                                   handler:^(UIAlertAction *action) {
+            float newTemp = targetTemp.floatValue - 1.0;
+            [self setClimateTemperature:newTemp forEntityId:entityId];
+        }];
+        
+        [alert addAction:increaseTempAction];
+        [alert addAction:decreaseTempAction];
+    }
+    
+    // Add on/off toggle if the device supports it
+    if (![state isEqualToString:@"unavailable"]) {
+        NSString *toggleTitle = [state isEqualToString:@"off"] ? @"Turn On" : @"Turn Off";
+        UIAlertAction *toggleAction = [UIAlertAction actionWithTitle:toggleTitle
+                                                               style:UIAlertActionStyleDefault
+                                                             handler:^(UIAlertAction *action) {
+            if ([state isEqualToString:@"off"]) {
+                [self.homeAssistantClient callService:@"climate" service:@"turn_on" entityId:entityId];
+            } else {
+                [self.homeAssistantClient callService:@"climate" service:@"turn_off" entityId:entityId];
+            }
+        }];
+        [alert addAction:toggleAction];
+    }
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
+    [alert addAction:cancelAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)showCoverControlForEntity:(NSDictionary *)entity {
+    NSString *entityId = entity[@"entity_id"];
+    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+    NSString *state = entity[@"state"];
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                   message:[NSString stringWithFormat:@"Current state: %@", state]
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *openAction = [UIAlertAction actionWithTitle:@"Open"
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:^(UIAlertAction *action) {
+        [self.homeAssistantClient callService:@"cover" service:@"open_cover" entityId:entityId];
+    }];
+    
+    UIAlertAction *closeAction = [UIAlertAction actionWithTitle:@"Close"
+                                                          style:UIAlertActionStyleDefault
+                                                        handler:^(UIAlertAction *action) {
+        [self.homeAssistantClient callService:@"cover" service:@"close_cover" entityId:entityId];
+    }];
+    
+    UIAlertAction *stopAction = [UIAlertAction actionWithTitle:@"Stop"
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:^(UIAlertAction *action) {
+        [self.homeAssistantClient callService:@"cover" service:@"stop_cover" entityId:entityId];
+    }];
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
+    
+    [alert addAction:openAction];
+    [alert addAction:closeAction];
+    [alert addAction:stopAction];
+    [alert addAction:cancelAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)showLockControlForEntity:(NSDictionary *)entity {
+    NSString *entityId = entity[@"entity_id"];
+    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+    NSString *state = entity[@"state"];
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                   message:[NSString stringWithFormat:@"Current state: %@", state]
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *lockAction = [UIAlertAction actionWithTitle:@"Lock"
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:^(UIAlertAction *action) {
+        [self.homeAssistantClient callService:@"lock" service:@"lock" entityId:entityId];
+    }];
+    
+    UIAlertAction *unlockAction = [UIAlertAction actionWithTitle:@"Unlock"
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:^(UIAlertAction *action) {
+        [self.homeAssistantClient callService:@"lock" service:@"unlock" entityId:entityId];
+    }];
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
+    
+    [alert addAction:lockAction];
+    [alert addAction:unlockAction];
+    [alert addAction:cancelAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)setClimateTemperature:(float)temperature forEntityId:(NSString *)entityId {
+    [self.homeAssistantClient callClimateService:@"set_temperature" 
+                                        entityId:entityId 
+                                     temperature:temperature];
+}
+
+- (void)animateCardTap:(EntityCardCell *)cell {
+    if (!cell) return;
+    
+    // Scale animation for visual feedback
+    [UIView animateWithDuration:0.1 animations:^{
+        cell.transform = CGAffineTransformMakeScale(0.95, 0.95);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.1 animations:^{
+            cell.transform = CGAffineTransformIdentity;
+        }];
+    }];
+}
+
+- (void)showSensorInfoForEntity:(NSDictionary *)entity {
+    NSString *entityId = entity[@"entity_id"];
+    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
+    NSString *state = entity[@"state"];
+    
+    NSMutableString *message = [NSMutableString stringWithFormat:@"Current State: %@", state];
+    
+    // Add useful attributes for sensors
+    NSDictionary *attributes = entity[@"attributes"];
+    if (attributes) {
+        NSString *unit = attributes[@"unit_of_measurement"];
+        NSString *deviceClass = attributes[@"device_class"];
+        NSString *lastChanged = entity[@"last_changed"];
+        
+        if (unit) {
+            [message appendFormat:@"\nUnit: %@", unit];
+        }
+        if (deviceClass) {
+            [message appendFormat:@"\nType: %@", [deviceClass capitalizedString]];
+        }
+        if (lastChanged) {
+            // Format the timestamp
+            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+            formatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
+            NSDate *date = [formatter dateFromString:lastChanged];
+            if (date) {
+                formatter.dateStyle = NSDateFormatterMediumStyle;
+                formatter.timeStyle = NSDateFormatterShortStyle;
+                [message appendFormat:@"\nLast Updated: %@", [formatter stringFromDate:date]];
+            }
+        }
+    }
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
+                                                                   message:message
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+    [alert addAction:okAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 @end

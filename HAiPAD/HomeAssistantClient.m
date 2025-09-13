@@ -181,4 +181,43 @@
     }
 }
 
+- (void)callClimateService:(NSString *)service entityId:(NSString *)entityId temperature:(float)temperature {
+    if (!self.isConnected) {
+        return;
+    }
+    
+    NSString *urlString = [NSString stringWithFormat:@"%@/api/services/climate/%@", self.baseURL, service];
+    NSURL *url = [NSURL URLWithString:urlString];
+    
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"POST"];
+    [request setValue:[NSString stringWithFormat:@"Bearer %@", self.accessToken] forHTTPHeaderField:@"Authorization"];
+    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    
+    NSDictionary *requestBody = @{
+        @"entity_id": entityId,
+        @"temperature": @(temperature)
+    };
+    NSError *jsonError;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:requestBody options:0 error:&jsonError];
+    
+    if (!jsonError) {
+        [request setHTTPBody:jsonData];
+        
+        NSURLSessionDataTask *task = [self.urlSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (error) {
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+                        [self.delegate homeAssistantClient:self didFailWithError:error];
+                    }
+                }
+                // Refresh states after service call
+                [self fetchStates];
+            });
+        }];
+        
+        [task resume];
+    }
+}
+
 @end

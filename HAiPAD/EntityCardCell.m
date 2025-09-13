@@ -42,8 +42,11 @@
     
     // Reset to default appearance
     self.cardContainerView.backgroundColor = [UIColor whiteColor];
+    self.cardContainerView.layer.borderWidth = 0.0;
+    self.cardContainerView.layer.borderColor = [UIColor clearColor].CGColor;
     self.nameLabel.text = @"";
     self.stateLabel.text = @"";
+    self.nameLabel.textColor = [UIColor darkTextColor];
 }
 
 - (void)configureWithEntity:(NSDictionary *)entity {
@@ -83,10 +86,32 @@
         } else if (currentTemp) {
             return [NSString stringWithFormat:@"%.1f%@", currentTemp.floatValue, unit];
         }
-        return state;
+        return [state capitalizedString];
+    } else if ([entityId hasPrefix:@"cover."]) {
+        if ([state isEqualToString:@"open"]) {
+            return @"Open";
+        } else if ([state isEqualToString:@"closed"]) {
+            return @"Closed";
+        } else if ([state isEqualToString:@"opening"]) {
+            return @"Opening...";
+        } else if ([state isEqualToString:@"closing"]) {
+            return @"Closing...";
+        }
+        return [state capitalizedString];
+    } else if ([entityId hasPrefix:@"lock."]) {
+        if ([state isEqualToString:@"locked"]) {
+            return @"🔒 Locked";
+        } else if ([state isEqualToString:@"unlocked"]) {
+            return @"🔓 Unlocked";
+        } else if ([state isEqualToString:@"locking"]) {
+            return @"🔒 Locking...";
+        } else if ([state isEqualToString:@"unlocking"]) {
+            return @"🔓 Unlocking...";
+        }
+        return [state capitalizedString];
     }
     
-    return state;
+    return [state capitalizedString];
 }
 
 - (void)updateCardAppearanceForEntity:(NSDictionary *)entity {
@@ -98,43 +123,87 @@
             // Light is on - warm yellow background
             self.cardContainerView.backgroundColor = [UIColor colorWithRed:1.0 green:0.95 blue:0.8 alpha:1.0];
             self.nameLabel.textColor = [UIColor colorWithRed:0.8 green:0.6 blue:0.0 alpha:1.0];
+            self.cardContainerView.layer.borderWidth = 2.0;
+            self.cardContainerView.layer.borderColor = [UIColor colorWithRed:1.0 green:0.8 blue:0.0 alpha:1.0].CGColor;
         } else {
             // Light is off - default appearance
             self.cardContainerView.backgroundColor = [UIColor whiteColor];
             self.nameLabel.textColor = [UIColor darkTextColor];
+            self.cardContainerView.layer.borderWidth = 0.0;
         }
     } else if ([entityId hasPrefix:@"switch."]) {
         if ([state isEqualToString:@"on"]) {
             // Switch is on - light blue background
             self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.9 green:0.95 blue:1.0 alpha:1.0];
             self.nameLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+            self.cardContainerView.layer.borderWidth = 2.0;
+            self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.0 green:0.7 blue:1.0 alpha:1.0].CGColor;
         } else {
             // Switch is off - default appearance
             self.cardContainerView.backgroundColor = [UIColor whiteColor];
             self.nameLabel.textColor = [UIColor darkTextColor];
+            self.cardContainerView.layer.borderWidth = 0.0;
         }
     } else if ([entityId hasPrefix:@"fan."]) {
         if ([state isEqualToString:@"on"]) {
             // Fan is on - light green background
             self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.9 green:1.0 blue:0.9 alpha:1.0];
             self.nameLabel.textColor = [UIColor colorWithRed:0.0 green:0.7 blue:0.0 alpha:1.0];
+            self.cardContainerView.layer.borderWidth = 2.0;
+            self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.0 green:0.8 blue:0.0 alpha:1.0].CGColor;
         } else {
             // Fan is off - default appearance
             self.cardContainerView.backgroundColor = [UIColor whiteColor];
             self.nameLabel.textColor = [UIColor darkTextColor];
+            self.cardContainerView.layer.borderWidth = 0.0;
         }
     } else if ([entityId hasPrefix:@"climate."]) {
-        // Climate - orange/red tint
-        self.cardContainerView.backgroundColor = [UIColor colorWithRed:1.0 green:0.95 blue:0.9 alpha:1.0];
-        self.nameLabel.textColor = [UIColor colorWithRed:1.0 green:0.5 blue:0.0 alpha:1.0];
+        // Climate - orange/red tint, always interactive
+        if ([state isEqualToString:@"off"]) {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.95 green:0.95 blue:0.95 alpha:1.0];
+            self.nameLabel.textColor = [UIColor grayColor];
+        } else {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:1.0 green:0.95 blue:0.9 alpha:1.0];
+            self.nameLabel.textColor = [UIColor colorWithRed:1.0 green:0.5 blue:0.0 alpha:1.0];
+        }
+        self.cardContainerView.layer.borderWidth = 1.0;
+        self.cardContainerView.layer.borderColor = [UIColor colorWithRed:1.0 green:0.7 blue:0.3 alpha:1.0].CGColor;
+    } else if ([entityId hasPrefix:@"cover."]) {
+        // Cover - purple tint, interactive
+        if ([state isEqualToString:@"open"]) {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.95 green:0.9 blue:1.0 alpha:1.0];
+            self.nameLabel.textColor = [UIColor colorWithRed:0.6 green:0.3 blue:0.9 alpha:1.0];
+        } else if ([state isEqualToString:@"closed"]) {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.9 green:0.9 blue:0.95 alpha:1.0];
+            self.nameLabel.textColor = [UIColor colorWithRed:0.5 green:0.5 blue:0.7 alpha:1.0];
+        } else {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.92 green:0.89 blue:0.97 alpha:1.0];
+            self.nameLabel.textColor = [UIColor colorWithRed:0.55 green:0.4 blue:0.8 alpha:1.0];
+        }
+        self.cardContainerView.layer.borderWidth = 1.0;
+        self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.7 green:0.5 blue:0.9 alpha:1.0].CGColor;
+    } else if ([entityId hasPrefix:@"lock."]) {
+        // Lock - red/green based on state, interactive
+        if ([state isEqualToString:@"locked"]) {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:0.9 green:1.0 blue:0.9 alpha:1.0];
+            self.nameLabel.textColor = [UIColor colorWithRed:0.0 green:0.7 blue:0.0 alpha:1.0];
+            self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.0 green:0.8 blue:0.0 alpha:1.0].CGColor;
+        } else {
+            self.cardContainerView.backgroundColor = [UIColor colorWithRed:1.0 green:0.9 blue:0.9 alpha:1.0];
+            self.nameLabel.textColor = [UIColor colorWithRed:0.8 green:0.0 blue:0.0 alpha:1.0];
+            self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.8 green:0.0 blue:0.0 alpha:1.0].CGColor;
+        }
+        self.cardContainerView.layer.borderWidth = 2.0;
     } else if ([entityId hasPrefix:@"sensor."] || [entityId hasPrefix:@"binary_sensor."]) {
-        // Sensors - light gray background
+        // Sensors - light gray background, read-only
         self.cardContainerView.backgroundColor = [UIColor colorWithWhite:0.98 alpha:1.0];
         self.nameLabel.textColor = [UIColor darkTextColor];
+        self.cardContainerView.layer.borderWidth = 0.0;
     } else {
         // Default appearance
         self.cardContainerView.backgroundColor = [UIColor whiteColor];
         self.nameLabel.textColor = [UIColor darkTextColor];
+        self.cardContainerView.layer.borderWidth = 0.0;
     }
 }
 
