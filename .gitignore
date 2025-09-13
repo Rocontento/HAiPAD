@@ -54,3 +54,14 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
+
+# Code Signing (these should be stored in GitHub Secrets, not in repository)
+*.p12
+*.cer
+*.mobileprovision
+embedded.mobileprovision
+ExportOptions.plist
+
+# CI/CD temporary files
+/export/
+/build/
