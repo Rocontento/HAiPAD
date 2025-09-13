@@ -15,6 +15,8 @@
 		3D0E7B9D1E8B8C8A00B5C9B5 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3D0E7B9B1E8B8C8A00B5C9B5 /* LaunchScreen.storyboard */; };
 		3D0E7BA51E8B8CEA00B5C9B5 /* HomeAssistantClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA41E8B8CEA00B5C9B5 /* HomeAssistantClient.m */; };
 		3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */; };
+		3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */; };
+		3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +34,10 @@
 		3D0E7BA41E8B8CEA00B5C9B5 /* HomeAssistantClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HomeAssistantClient.m; sourceTree = "<group>"; };
 		3D0E7BA61E8B8D0000B5C9B5 /* ConfigurationViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ConfigurationViewController.h; sourceTree = "<group>"; };
 		3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ConfigurationViewController.m; sourceTree = "<group>"; };
+		3D0E7BA81E8B8D1000B5C9B5 /* EntitySettingsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EntitySettingsViewController.h; sourceTree = "<group>"; };
+		3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntitySettingsViewController.m; sourceTree = "<group>"; };
+		3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EntityCardCell.h; sourceTree = "<group>"; };
+		3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntityCardCell.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +96,8 @@
 				3D0E7B941E8B8C8A00B5C9B5 /* DashboardViewController.m */,
 				3D0E7BA61E8B8D0000B5C9B5 /* ConfigurationViewController.h */,
 				3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */,
+				3D0E7BA81E8B8D1000B5C9B5 /* EntitySettingsViewController.h */,
+				3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */,
 			);
 			name = Controllers;
 			sourceTree = "<group>";
@@ -100,6 +108,8 @@
 				3D0E7B961E8B8C8A00B5C9B5 /* Main.storyboard */,
 				3D0E7B9B1E8B8C8A00B5C9B5 /* LaunchScreen.storyboard */,
 				3D0E7B991E8B8C8A00B5C9B5 /* Assets.xcassets */,
+				3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */,
+				3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -189,6 +199,8 @@
 				3D0E7BA51E8B8CEA00B5C9B5 /* HomeAssistantClient.m in Sources */,
 				3D0E7B921E8B8C8A00B5C9B5 /* AppDelegate.m in Sources */,
 				3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */,
+				3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */,
+				3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */,
 				3D0E7B8F1E8B8C8A00B5C9B5 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
