@@ -392,9 +392,19 @@
     CGFloat overlayWidth = self.gridOverlayView.bounds.size.width;
     CGFloat overlayHeight = self.gridOverlayView.bounds.size.height;
     
+    // Safety check for zero dimensions
+    if (overlayWidth <= 0 || overlayHeight <= 0 || self.gridColumns <= 0 || self.gridRows <= 0) {
+        return;
+    }
+    
     // Calculate cell size for the overlay
     CGFloat cellWidth = (overlayWidth - self.gridInsets.left - self.gridInsets.right - ((self.gridColumns - 1) * self.cellSpacing)) / self.gridColumns;
     CGFloat cellHeight = (overlayHeight - self.gridInsets.top - self.gridInsets.bottom - ((self.gridRows - 1) * self.cellSpacing)) / self.gridRows;
+    
+    // Safety check for negative cell sizes
+    if (cellWidth <= 0 || cellHeight <= 0) {
+        return;
+    }
     
     // Draw vertical lines
     for (NSInteger col = 0; col <= self.gridColumns; col++) {
@@ -424,6 +434,10 @@
 - (void)highlightGridCells:(CGPoint)position size:(CGSize)size {
     if (!self.gridOverlayView) return;
     
+    // Safety checks
+    if (size.width <= 0 || size.height <= 0) return;
+    if (position.x < 0 || position.y < 0) return;
+    
     // Remove existing highlights
     NSArray *subviews = [self.gridOverlayView.subviews copy];
     for (UIView *subview in subviews) {
@@ -432,18 +446,34 @@
         }
     }
     
-    // Calculate frame for highlighted area
-    CGRect highlightFrame = [self frameForGridPosition:position size:size];
+    // Calculate frame for highlighted area using overlay dimensions
+    CGFloat overlayWidth = self.gridOverlayView.bounds.size.width;
+    CGFloat overlayHeight = self.gridOverlayView.bounds.size.height;
     
-    // Adjust frame to overlay coordinates
-    CGRect overlayBounds = self.gridOverlayView.bounds;
-    CGFloat scaleX = overlayBounds.size.width / self.contentSize.width;
-    CGFloat scaleY = overlayBounds.size.height / self.contentSize.height;
+    // Safety check for zero dimensions
+    if (overlayWidth <= 0 || overlayHeight <= 0 || self.gridColumns <= 0 || self.gridRows <= 0) {
+        return;
+    }
     
-    highlightFrame.origin.x *= scaleX;
-    highlightFrame.origin.y *= scaleY;
-    highlightFrame.size.width *= scaleX;
-    highlightFrame.size.height *= scaleY;
+    CGFloat cellWidth = (overlayWidth - self.gridInsets.left - self.gridInsets.right - ((self.gridColumns - 1) * self.cellSpacing)) / self.gridColumns;
+    CGFloat cellHeight = (overlayHeight - self.gridInsets.top - self.gridInsets.bottom - ((self.gridRows - 1) * self.cellSpacing)) / self.gridRows;
+    
+    // Safety check for negative cell sizes
+    if (cellWidth <= 0 || cellHeight <= 0) {
+        return;
+    }
+    
+    CGFloat x = self.gridInsets.left + (position.x * (cellWidth + self.cellSpacing));
+    CGFloat y = self.gridInsets.top + (position.y * (cellHeight + self.cellSpacing));
+    CGFloat width = (size.width * cellWidth) + ((size.width - 1) * self.cellSpacing);
+    CGFloat height = (size.height * cellHeight) + ((size.height - 1) * self.cellSpacing);
+    
+    CGRect highlightFrame = CGRectMake(x, y, width, height);
+    
+    // Ensure frame is within bounds
+    if (CGRectIsEmpty(highlightFrame) || highlightFrame.size.width <= 0 || highlightFrame.size.height <= 0) {
+        return;
+    }
     
     // Create highlight view
     UIView *highlight = [[UIView alloc] initWithFrame:highlightFrame];
@@ -455,21 +485,23 @@
     
     [self.gridOverlayView addSubview:highlight];
     
-    // Add size label
-    UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, highlight.frame.size.width, 30)];
-    sizeLabel.text = [NSString stringWithFormat:@"%.0fx%.0f", size.width, size.height];
-    sizeLabel.textAlignment = NSTextAlignmentCenter;
-    sizeLabel.font = [UIFont boldSystemFontOfSize:14];
-    sizeLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
-    sizeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.9];
-    sizeLabel.layer.cornerRadius = 4.0;
-    sizeLabel.layer.masksToBounds = YES;
-    
-    // Center the label
-    CGPoint center = CGPointMake(highlight.frame.size.width / 2, highlight.frame.size.height / 2);
-    sizeLabel.center = center;
-    
-    [highlight addSubview:sizeLabel];
+    // Add size label only if the highlight is large enough
+    if (highlight.frame.size.width >= 60 && highlight.frame.size.height >= 30) {
+        UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, MIN(highlight.frame.size.width, 80), 30)];
+        sizeLabel.text = [NSString stringWithFormat:@"%.0fx%.0f", size.width, size.height];
+        sizeLabel.textAlignment = NSTextAlignmentCenter;
+        sizeLabel.font = [UIFont boldSystemFontOfSize:14];
+        sizeLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+        sizeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.9];
+        sizeLabel.layer.cornerRadius = 4.0;
+        sizeLabel.layer.masksToBounds = YES;
+        
+        // Center the label
+        CGPoint center = CGPointMake(highlight.frame.size.width / 2, highlight.frame.size.height / 2);
+        sizeLabel.center = center;
+        
+        [highlight addSubview:sizeLabel];
+    }
     
     // Animate highlight
     highlight.transform = CGAffineTransformMakeScale(0.8, 0.8);
