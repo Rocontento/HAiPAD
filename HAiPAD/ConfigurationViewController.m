@@ -12,6 +12,7 @@
 
 @interface ConfigurationViewController () <HomeAssistantClientDelegate>
 @property (nonatomic, strong) HomeAssistantClient *testClient;
+@property (nonatomic, weak) id<HomeAssistantClientDelegate> originalDelegate;
 @end
 
 @implementation ConfigurationViewController
@@ -158,7 +159,11 @@
     
     // Connect with new configuration
     HomeAssistantClient *client = [HomeAssistantClient sharedClient];
+    
+    // Store the original delegate before setting ourselves
+    self.originalDelegate = client.delegate;
     client.delegate = self;
+    
     [client connectWithBaseURL:url accessToken:token];
     
     self.statusLabel.text = @"Saving and testing connection...";
@@ -209,6 +214,13 @@
 
 - (IBAction)cancelButtonTapped:(id)sender {
     [self cleanupTestClient];
+    
+    // Restore the original delegate before dismissing
+    if (self.originalDelegate) {
+        HomeAssistantClient *client = [HomeAssistantClient sharedClient];
+        client.delegate = self.originalDelegate;
+    }
+    
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
@@ -222,6 +234,12 @@
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     [self cleanupTestClient];
+    
+    // Restore the original delegate for the shared client
+    if (self.originalDelegate) {
+        HomeAssistantClient *client = [HomeAssistantClient sharedClient];
+        client.delegate = self.originalDelegate;
+    }
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -242,6 +260,10 @@
     // If this was a save operation, dismiss the view controller
     if (client == [HomeAssistantClient sharedClient]) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            // Restore the original delegate before dismissing
+            if (self.originalDelegate) {
+                client.delegate = self.originalDelegate;
+            }
             [self dismissViewControllerAnimated:YES completion:nil];
         });
     }

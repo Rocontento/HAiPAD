@@ -12,6 +12,7 @@
 @property (nonatomic, strong) NSArray *allEntities;
 @property (nonatomic, strong) NSMutableSet *enabledEntityIds;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
+@property (nonatomic, weak) id<HomeAssistantClientDelegate> originalDelegate;
 @end
 
 @implementation EntitySettingsViewController
@@ -35,6 +36,11 @@
     
     // Set up Home Assistant client
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
+    
+    // Store the original delegate so we can restore it later
+    self.originalDelegate = self.homeAssistantClient.delegate;
+    
+    // Set ourselves as delegate temporarily
     self.homeAssistantClient.delegate = self;
     
     // Fetch current entities
@@ -45,6 +51,15 @@
     } else {
         self.statusLabel.text = @"Not connected to Home Assistant";
         self.statusLabel.textColor = [UIColor redColor];
+    }
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    
+    // Restore the original delegate when leaving this view controller
+    if (self.originalDelegate) {
+        self.homeAssistantClient.delegate = self.originalDelegate;
     }
 }
 
@@ -70,6 +85,12 @@
 
 - (IBAction)doneButtonTapped:(id)sender {
     [self saveEntitySettings];
+    
+    // Restore the original delegate before dismissing
+    if (self.originalDelegate) {
+        self.homeAssistantClient.delegate = self.originalDelegate;
+    }
+    
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
