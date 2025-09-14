@@ -78,6 +78,10 @@
     self.popupContainer.layer.cornerRadius = 16.0;
     self.popupContainer.layer.masksToBounds = NO;
     
+    // Add debug border to make popup visible
+    self.popupContainer.layer.borderWidth = 2.0;
+    self.popupContainer.layer.borderColor = [UIColor redColor].CGColor;
+    
     // Shadow for iOS 9.3.5 compatibility
     self.popupContainer.layer.shadowColor = [UIColor blackColor].CGColor;
     self.popupContainer.layer.shadowOffset = CGSizeMake(0, 8);
@@ -103,6 +107,7 @@
 - (void)setupContentBasedOnType {
     // Content view directly in popup container (without scroll view for now)
     self.contentView = [[UIView alloc] init];
+    self.contentView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0]; // Light gray background for debugging
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.popupContainer addSubview:self.contentView];
     
@@ -125,6 +130,7 @@
     
     // Button container
     self.buttonContainer = [[UIView alloc] init];
+    self.buttonContainer.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0]; // Debug background for buttons
     self.buttonContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.buttonContainer];
     
