@@ -17,13 +17,12 @@
 @property (nonatomic, strong) NSURLSession *webSocketSession;
 @property (nonatomic, strong) NSURLSessionWebSocketTask *webSocketTask;
 #endif
-@property (nonatomic, assign) BOOL isConnected;
+@property (nonatomic, readwrite, assign) BOOL isConnected;
 @property (nonatomic, assign) BOOL webSocketConnected;
 @property (nonatomic, strong) NSTimer *autoRefreshTimer;
 @property (nonatomic, strong) NSTimer *reconnectTimer;
 @property (nonatomic, assign) NSInteger websocketId;
 @property (nonatomic, strong) NSMutableDictionary *entitiesState;
-@property (nonatomic, assign) NSTimeInterval webSocketReconnectDelay;
 @property (nonatomic, assign) NSInteger reconnectAttempts;
 @property (nonatomic, strong) NSTimer *heartbeatTimer;
 @property (nonatomic, assign) BOOL awaitingHeartbeatResponse;
