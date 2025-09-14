@@ -13,8 +13,9 @@
 #import "CustomPopupViewController.h"
 #import "WhiteboardGridLayout.h"
 #import "EmptyGridSlotView.h"
+#import "EntitySelectionViewController.h"
 
-@interface DashboardViewController () <EntityCardCellDelegate>
+@interface DashboardViewController () <EntityCardCellDelegate, EmptyGridSlotViewDelegate, EntitySelectionViewControllerDelegate>
 @property (nonatomic, strong) NSArray *entities;
 @property (nonatomic, strong) NSArray *allEntities;
 @property (nonatomic, strong) NSSet *enabledEntityIds;
@@ -214,6 +215,9 @@
         [button setTitleColor:[UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1.0] forState:UIControlStateNormal];
         [button setTitleColor:[UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:1.0] forState:UIControlStateHighlighted];
     }
+    
+    // Update entities button text to "Settings"
+    [self.entitiesButton setTitle:@"Settings" forState:UIControlStateNormal];
 }
 
 - (void)setupNavigationBarToggle {
@@ -528,6 +532,11 @@
         EmptyGridSlotView *emptySlotView = [collectionView dequeueReusableSupplementaryViewOfKind:kind
                                                                                 withReuseIdentifier:@"EmptyGridSlotView"
                                                                                        forIndexPath:indexPath];
+        
+        // Set delegate and get grid position from layout
+        emptySlotView.delegate = self;
+        emptySlotView.gridPosition = [self.whiteboardLayout gridPositionForEmptySlotAtIndexPath:indexPath];
+        
         return emptySlotView;
     }
 
@@ -1123,6 +1132,62 @@
         [cell configureWithEntity:updatedEntity];
         [self animateEntityUpdate:cell];
     }
+}
+
+#pragma mark - EmptyGridSlotViewDelegate
+
+- (void)emptyGridSlotViewWasTapped:(EmptyGridSlotView *)slotView atGridPosition:(CGPoint)gridPosition {
+    // Only respond to taps when in editing mode
+    if (!self.editingMode) {
+        return;
+    }
+    
+    // Create entity selection controller with all available entities
+    EntitySelectionViewController *entitySelection = [EntitySelectionViewController controllerWithEntities:self.allEntities 
+                                                                                           targetGridPosition:gridPosition];
+    entitySelection.delegate = self;
+    
+    // Present modally
+    entitySelection.modalPresentationStyle = UIModalPresentationOverCurrentContext;
+    entitySelection.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
+    [self presentViewController:entitySelection animated:YES completion:nil];
+}
+
+#pragma mark - EntitySelectionViewControllerDelegate
+
+- (void)entitySelectionViewController:(EntitySelectionViewController *)controller 
+                     didSelectEntity:(NSDictionary *)entity 
+                      forGridPosition:(CGPoint)gridPosition {
+    
+    // Dismiss the selection controller first
+    [controller dismissViewControllerAnimated:YES completion:^{
+        // Add the entity to our enabled entities if it's not already there
+        NSString *entityId = entity[@"entity_id"];
+        if (![self.enabledEntityIds containsObject:entityId]) {
+            NSMutableSet *mutableEnabledEntities = [self.enabledEntityIds mutableCopy];
+            [mutableEnabledEntities addObject:entityId];
+            self.enabledEntityIds = [mutableEnabledEntities copy];
+            
+            // Save the updated enabled entities
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            [defaults setObject:[self.enabledEntityIds allObjects] forKey:@"ha_enabled_entities"];
+            [defaults synchronize];
+        }
+        
+        // Set the position for this entity
+        [self setGridPosition:gridPosition forEntity:entityId];
+        
+        // Refresh the filtered entities and reload the collection view
+        [self filterEntitiesBasedOnSettings];
+        
+        // Exit editing mode
+        [self setEditingMode:NO];
+        [self.editButton setTitle:@"Edit" forState:UIControlStateNormal];
+    }];
+}
+
+- (void)entitySelectionViewControllerDidCancel:(EntitySelectionViewController *)controller {
+    [controller dismissViewControllerAnimated:YES completion:nil];
 }
 
 @end

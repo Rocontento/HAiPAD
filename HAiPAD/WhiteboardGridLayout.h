@@ -55,4 +55,10 @@
 - (void)hideGridOverlay;
 - (void)highlightGridCells:(CGPoint)position size:(CGSize)size;
 
+// Get grid position from a touch point in the collection view
+- (CGPoint)gridPositionFromTouchPoint:(CGPoint)point inCollectionView:(UICollectionView *)collectionView;
+
+// Get grid position for an empty slot by index path
+- (CGPoint)gridPositionForEmptySlotAtIndexPath:(NSIndexPath *)indexPath;
+
 @end
