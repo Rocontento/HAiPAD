@@ -8,6 +8,7 @@
 
 #import "SceneView.h"
 #import "UIColor+HAiPAD.h"
+#import <CoreGraphics/CoreGraphics.h>
 
 @interface SceneView ()
 @property (nonatomic, strong) UIButton *activateButton;
@@ -75,7 +76,7 @@
     CGPathMoveToPoint(path, NULL, 10, 8);
     CGPathAddLineToPoint(path, NULL, 24, 16);
     CGPathAddLineToPoint(path, NULL, 10, 24);
-    CGPathClosePath(path);
+    CGPathCloseSubpath(path);
     CGContextAddPath(context, path);
     CGContextStrokePath(context);
     CGPathRelease(path);
