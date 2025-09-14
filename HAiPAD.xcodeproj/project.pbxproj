@@ -18,6 +18,8 @@
 		3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */; };
 		3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */; };
 		F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 995AE90E56A5453ABD549115 /* CustomPopupViewController.m */; };
+		074FF8890754473B9C791351 /* WhiteboardGridLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = B9DF490689F84031B2F93DC1 /* WhiteboardGridLayout.m */; };
+		F64654EC7D5144F95BF829D9 /* EmptyGridSlotView.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB6D15C6AE48B4945C75C2 /* EmptyGridSlotView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +43,10 @@
 		3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntityCardCell.m; sourceTree = "<group>"; };
 		06D8AE62F95F48BBBDF5D653 /* CustomPopupViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CustomPopupViewController.h; sourceTree = "<group>"; };
 		995AE90E56A5453ABD549115 /* CustomPopupViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomPopupViewController.m; sourceTree = "<group>"; };
+		976E357ACEFD4CC5BF1FE136 /* WhiteboardGridLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WhiteboardGridLayout.h; sourceTree = "<group>"; };
+		B9DF490689F84031B2F93DC1 /* WhiteboardGridLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WhiteboardGridLayout.m; sourceTree = "<group>"; };
+		8B2B8828AE574835A0C14CB4 /* EmptyGridSlotView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EmptyGridSlotView.h; sourceTree = "<group>"; };
+		7DEB6D15C6AE48B4945C75C2 /* EmptyGridSlotView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EmptyGridSlotView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,6 +121,10 @@
 				3D0E7B991E8B8C8A00B5C9B5 /* Assets.xcassets */,
 				3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */,
 				3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */,
+				976E357ACEFD4CC5BF1FE136 /* WhiteboardGridLayout.h */,
+				B9DF490689F84031B2F93DC1 /* WhiteboardGridLayout.m */,
+				8B2B8828AE574835A0C14CB4 /* EmptyGridSlotView.h */,
+				7DEB6D15C6AE48B4945C75C2 /* EmptyGridSlotView.m */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -207,6 +217,8 @@
 				3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */,
 				3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */,
 				F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */,
+				074FF8890754473B9C791351 /* WhiteboardGridLayout.m in Sources */,
+				F64654EC7D5144F95BF829D9 /* EmptyGridSlotView.m in Sources */,
 				3D0E7B8F1E8B8C8A00B5C9B5 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

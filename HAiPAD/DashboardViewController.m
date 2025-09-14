@@ -11,6 +11,7 @@
 #import "EntitySettingsViewController.h"
 #import "EntityCardCell.h"
 #import "CustomPopupViewController.h"
+#import "WhiteboardGridLayout.h"
 #import "EmptyGridSlotView.h"
 
 @interface DashboardViewController ()
