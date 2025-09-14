@@ -38,17 +38,24 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="K3C-gf-Ucr">
-                                        <rect key="frame" x="201" y="15" width="54" height="30"/>
+                                        <rect key="frame" x="177" y="15" width="54" height="30"/>
                                         <state key="normal" title="Refresh"/>
                                         <connections>
                                             <action selector="refreshButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="MxT-fQ-aN3"/>
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="abc-def-ghi">
-                                        <rect key="frame" x="147" y="15" width="46" height="30"/>
+                                        <rect key="frame" x="85" y="15" width="46" height="30"/>
                                         <state key="normal" title="Entities"/>
                                         <connections>
                                             <action selector="entitiesButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="jkl-mno-pqr"/>
+                                        </connections>
+                                    </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="edit-button">
+                                        <rect key="frame" x="139" y="15" width="30" height="30"/>
+                                        <state key="normal" title="Edit"/>
+                                        <connections>
+                                            <action selector="editButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="edit-action"/>
                                         </connections>
                                     </button>
                                 </subviews>
@@ -61,7 +68,9 @@
                                     <constraint firstAttribute="height" constant="60" id="MjK-xI-Gdn"/>
                                     <constraint firstItem="Bfi-3H-dKE" firstAttribute="leading" secondItem="K3C-gf-Ucr" secondAttribute="trailing" constant="8" id="rZj-0T-bhh"/>
                                     <constraint firstItem="K3C-gf-Ucr" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="zC8-cl-vWf"/>
-                                    <constraint firstItem="K3C-gf-Ucr" firstAttribute="leading" secondItem="abc-def-ghi" secondAttribute="trailing" constant="8" id="abc-123-xyz"/>
+                                    <constraint firstItem="K3C-gf-Ucr" firstAttribute="leading" secondItem="edit-button" secondAttribute="trailing" constant="8" id="abc-123-xyz"/>
+                                    <constraint firstItem="edit-button" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="edit-center-y"/>
+                                    <constraint firstItem="edit-button" firstAttribute="leading" secondItem="abc-def-ghi" secondAttribute="trailing" constant="8" id="edit-leading"/>
                                     <constraint firstItem="abc-def-ghi" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="def-456-uvw"/>
                                 </constraints>
                             </view>
@@ -156,6 +165,7 @@
                         <outlet property="statusLabel" destination="gx3-NM-7hc" id="Pya-rV-Bb3"/>
                         <outlet property="collectionView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
                         <outlet property="entitiesButton" destination="abc-def-ghi" id="stu-vwx-yz1"/>
+                        <outlet property="editButton" destination="edit-button" id="edit-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
@@ -253,6 +263,18 @@
                                                     <segment title="4"/>
                                                 </segments>
                                             </segmentedControl>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Grid Size: 6x6" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="grid-size-label">
+                                                <rect key="frame" x="20" y="441" width="148" height="21"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <slider opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="6" minValue="1" maxValue="8" translatesAutoresizingMaskIntoConstraints="NO" id="grid-size-slider">
+                                                <rect key="frame" x="18" y="470" width="339" height="31"/>
+                                                <connections>
+                                                    <action selector="gridSizeSliderChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="grid-slider-action"/>
+                                                </connections>
+                                            </slider>
                                         </subviews>
                                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                         <constraints>
@@ -280,6 +302,11 @@
                                             <constraint firstItem="columns-segmented" firstAttribute="top" secondItem="columns-label" secondAttribute="bottom" constant="8" id="col-seg-top"/>
                                             <constraint firstItem="columns-segmented" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="col-seg-lead"/>
                                             <constraint firstAttribute="trailing" secondItem="columns-segmented" secondAttribute="trailing" constant="20" id="col-seg-trail"/>
+                                            <constraint firstItem="grid-size-label" firstAttribute="top" secondItem="columns-segmented" secondAttribute="bottom" constant="30" id="grid-label-top"/>
+                                            <constraint firstItem="grid-size-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-label-lead"/>
+                                            <constraint firstItem="grid-size-slider" firstAttribute="top" secondItem="grid-size-label" secondAttribute="bottom" constant="8" id="grid-slider-top"/>
+                                            <constraint firstItem="grid-size-slider" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-slider-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="grid-size-slider" secondAttribute="trailing" constant="20" id="grid-slider-trail"/>
                                         </constraints>
                                     </view>
                                 </subviews>
@@ -309,6 +336,8 @@
                         <outlet property="tokenTextField" destination="1iI-ap-5KH" id="f3Z-sX-VrP"/>
                         <outlet property="urlTextField" destination="j0c-ux-7iy" id="qYh-Tg-jGm"/>
                         <outlet property="columnsSegmentedControl" destination="columns-segmented" id="columns-outlet"/>
+                        <outlet property="gridSizeSlider" destination="grid-size-slider" id="grid-slider-outlet"/>
+                        <outlet property="gridSizeLabel" destination="grid-size-label" id="grid-label-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Zio-cy-Dou" sceneMemberID="firstResponder"/>
