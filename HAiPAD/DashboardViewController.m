@@ -258,6 +258,11 @@
         // Apply background color
         self.view.backgroundColor = self.dashboardBackgroundColor;
         
+        // Restore collection view background
+        if (self.collectionView) {
+            self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        }
+        
         // Remove background image and status bar overlay when using color mode
         UIView *backgroundImageView = [self.view viewWithTag:999];
         if (backgroundImageView) {
@@ -282,53 +287,46 @@
     }
     
     // Remove any existing background image views to avoid duplicates
-    for (UIView *subview in self.view.subviews) {
-        if ([subview isKindOfClass:[UIImageView class]] && subview.tag == 999) {
-            [subview removeFromSuperview];
-            break;
-        }
+    UIView *existingBackgroundView = [self.view viewWithTag:999];
+    if (existingBackgroundView) {
+        [existingBackgroundView removeFromSuperview];
     }
     
-    // Apply background image
+    // Remove existing status bar overlay
+    UIView *existingOverlay = [self.view viewWithTag:998];
+    if (existingOverlay) {
+        [existingOverlay removeFromSuperview];
+    }
+    
+    // Create background image view
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
     backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
     backgroundImageView.clipsToBounds = YES;
     backgroundImageView.tag = 999; // Tag to identify background image view
-    self.view.backgroundColor = [UIColor clearColor];
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Set constraints to fill the view but start below the status bar
+    // Set constraints to fill the entire view (including behind status bar)
     backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    // For iOS 9.3.5 compatibility, use topLayoutGuide instead of safe area
-    NSLayoutConstraint *topConstraint;
-    if ([self respondsToSelector:@selector(topLayoutGuide)]) {
-        // iOS 9.3.5 compatible approach - start below status bar/navigation bar
-        topConstraint = [backgroundImageView.topAnchor constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor];
-    } else {
-        // Fallback for even older iOS versions
-        topConstraint = [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:20];
-    }
-    
     [NSLayoutConstraint activateConstraints:@[
-        topConstraint,
+        [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
     ]];
+    
+    // Ensure main content has transparent background to show image
+    self.view.backgroundColor = [UIColor clearColor];
+    if (self.collectionView) {
+        self.collectionView.backgroundColor = [UIColor clearColor];
+    }
     
     // Update status bar appearance for better visibility
     [self updateStatusBarAppearance];
 }
 
 - (void)updateStatusBarAppearance {
-    // For iOS 9.3.5, we should set the status bar style to ensure it's visible
-    // against the background image. Since we can't directly control it from here,
-    // we'll ensure the status bar area has good contrast by applying a subtle overlay
-    // if the background image is too bright/light
-    
     // Only proceed if we have a background image
     if (!self.backgroundImage || self.backgroundType != 1) {
         return;
@@ -340,9 +338,9 @@
         [existingOverlay removeFromSuperview];
     }
     
-    // Create a subtle dark overlay for the status bar area to improve text readability
+    // Create a subtle overlay for the status bar area to improve text readability
     UIView *statusBarOverlay = [[UIView alloc] init];
-    statusBarOverlay.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.15]; // Subtle dark overlay
+    statusBarOverlay.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.2]; // Slightly more visible overlay
     statusBarOverlay.tag = 998; // Tag to identify status bar overlay
     statusBarOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     

@@ -9,9 +9,10 @@
 #import "ConfigurationViewController.h"
 #import "HomeAssistantClient.h"
 #import "CustomPopupViewController.h"
+#import "ImagePreviewViewController.h"
 #import <Photos/Photos.h>
 
-@interface ConfigurationViewController () <HomeAssistantClientDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
+@interface ConfigurationViewController () <HomeAssistantClientDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, ImagePreviewViewControllerDelegate>
 @property (nonatomic, strong) HomeAssistantClient *testClient;
 @property (nonatomic, weak) id<HomeAssistantClientDelegate> originalDelegate;
 @property (nonatomic, strong) UIColor *selectedDashboardColor;
@@ -708,7 +709,10 @@
     UIImagePickerController *imagePicker = [[UIImagePickerController alloc] init];
     imagePicker.delegate = self;
     imagePicker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
-    imagePicker.allowsEditing = YES;
+    imagePicker.allowsEditing = NO; // We'll handle editing in our preview controller
+    
+    // Fix landscape orientation issue - set modal presentation style
+    imagePicker.modalPresentationStyle = UIModalPresentationFullScreen;
     
     [self presentViewController:imagePicker animated:YES completion:nil];
 }
@@ -737,26 +741,42 @@
 #pragma mark - UIImagePickerControllerDelegate
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
-    UIImage *selectedImage = info[UIImagePickerControllerEditedImage];
-    if (!selectedImage) {
-        selectedImage = info[UIImagePickerControllerOriginalImage];
-    }
+    UIImage *selectedImage = info[UIImagePickerControllerOriginalImage];
     
-    if (selectedImage) {
-        // Resize image to reduce memory usage
-        self.selectedBackgroundImage = [self resizeImage:selectedImage toMaxSize:CGSizeMake(1024, 1024)];
-        
-        // Update the button to show a preview or checkmark
-        if (self.backgroundImageButton) {
-            [self.backgroundImageButton setTitle:@"✓ Image Selected" forState:UIControlStateNormal];
+    [picker dismissViewControllerAnimated:YES completion:^{
+        if (selectedImage) {
+            // Present the image preview controller for cropping and positioning
+            ImagePreviewViewController *previewController = [[ImagePreviewViewController alloc] initWithImage:selectedImage];
+            previewController.delegate = self;
+            previewController.modalPresentationStyle = UIModalPresentationFullScreen;
+            [self presentViewController:previewController animated:YES completion:nil];
         }
-    }
-    
-    [picker dismissViewControllerAnimated:YES completion:nil];
+    }];
 }
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
     [picker dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark - ImagePreviewViewControllerDelegate
+
+- (void)imagePreviewViewController:(ImagePreviewViewController *)controller didFinishWithImage:(UIImage *)croppedImage transform:(CGAffineTransform)transform {
+    [controller dismissViewControllerAnimated:YES completion:^{
+        if (croppedImage) {
+            // Resize image to reduce memory usage while maintaining quality
+            self.selectedBackgroundImage = [self resizeImage:croppedImage toMaxSize:CGSizeMake(1024, 1024)];
+            
+            // Update the button to show a preview or checkmark
+            if (self.backgroundImageButton) {
+                [self.backgroundImageButton setTitle:@"✓ Image Selected" forState:UIControlStateNormal];
+                self.backgroundImageButton.backgroundColor = [UIColor colorWithRed:0.2 green:0.7 blue:0.3 alpha:1.0];
+            }
+        }
+    }];
+}
+
+- (void)imagePreviewViewControllerDidCancel:(ImagePreviewViewController *)controller {
+    [controller dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark - Image Utility
