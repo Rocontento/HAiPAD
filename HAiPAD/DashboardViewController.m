@@ -303,69 +303,81 @@
     
     // Load saved positioning data
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    CGFloat scale = [defaults floatForKey:@"ha_background_scale"];
-    CGFloat offsetX = [defaults floatForKey:@"ha_background_offset_x"];
-    CGFloat offsetY = [defaults floatForKey:@"ha_background_offset_y"];
+    CGFloat savedScale = [defaults floatForKey:@"ha_background_scale"];
+    CGFloat savedOffsetX = [defaults floatForKey:@"ha_background_offset_x"];
+    CGFloat savedOffsetY = [defaults floatForKey:@"ha_background_offset_y"];
     
-    NSLog(@"Dashboard: Loaded positioning - scale: %f, offset: (%f, %f)", scale, offsetX, offsetY);
+    NSLog(@"Dashboard: Loaded positioning - scale: %f, offset: (%f, %f)", savedScale, savedOffsetX, savedOffsetY);
     
-    // Default scale if none saved
-    if (scale <= 0) {
-        scale = 1.0;
-        NSLog(@"Dashboard: Using default scale: %f", scale);
-    }
-    
-    // Create background image view with proper scaling
+    // Create background image view
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill; // Fill entire screen, may crop image
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
     backgroundImageView.clipsToBounds = YES;
     backgroundImageView.tag = 999;
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Calculate image size and positioning
-    CGSize imageSize = self.backgroundImage.size;
+    // Get current view size
     CGSize viewSize = self.view.bounds.size;
+    CGSize imageSize = self.backgroundImage.size;
     
     NSLog(@"Dashboard: View size: %@, Image size: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
     
-    // Calculate fit scale (what was used as reference in preview)
-    CGFloat scaleX = viewSize.width / imageSize.width;
-    CGFloat scaleY = viewSize.height / imageSize.height;
-    CGFloat fitScale = MIN(scaleX, scaleY);
-    
-    NSLog(@"Dashboard: Calculated fit scale: %f", fitScale);
-    
-    // Apply the user's chosen scale
-    CGFloat finalScale = fitScale * scale;
-    CGSize scaledImageSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
-    
-    NSLog(@"Dashboard: Final scale: %f, Scaled image size: %@", finalScale, NSStringFromCGSize(scaledImageSize));
-    
-    // Calculate center position
-    CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
-    
-    // Apply user's offset (scaled to current view)
-    center.x += offsetX * finalScale;
-    center.y += offsetY * finalScale;
-    
-    NSLog(@"Dashboard: Final center position: %@", NSStringFromCGPoint(center));
-    
-    // Set frame with scaled size and offset position
-    CGRect finalFrame = CGRectMake(
-        center.x - scaledImageSize.width / 2.0,
-        center.y - scaledImageSize.height / 2.0,
-        scaledImageSize.width,
-        scaledImageSize.height
-    );
-    
-    NSLog(@"Dashboard: Setting background image frame: %@", NSStringFromCGRect(finalFrame));
-    
-    backgroundImageView.frame = finalFrame;
+    if (savedScale > 0) {
+        // Use saved positioning from preview
+        
+        // Calculate base scale that fits image to screen
+        CGFloat scaleX = viewSize.width / imageSize.width;
+        CGFloat scaleY = viewSize.height / imageSize.height;
+        CGFloat fitScale = MIN(scaleX, scaleY);
+        
+        // Apply user's scale adjustment
+        CGFloat finalScale = fitScale * savedScale;
+        CGSize scaledSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
+        
+        // Calculate center position
+        CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
+        
+        // Apply saved offset
+        center.x += savedOffsetX * finalScale;
+        center.y += savedOffsetY * finalScale;
+        
+        // Set final frame
+        backgroundImageView.frame = CGRectMake(
+            center.x - scaledSize.width / 2.0,
+            center.y - scaledSize.height / 2.0,
+            scaledSize.width,
+            scaledSize.height
+        );
+        
+        NSLog(@"Dashboard: Applied saved positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+        
+    } else {
+        // No saved positioning, use default: fill entire screen
+        
+        // Calculate scale to fill the entire view (may crop)
+        CGFloat scaleX = viewSize.width / imageSize.width;
+        CGFloat scaleY = viewSize.height / imageSize.height;
+        CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to fill entire screen
+        
+        CGSize scaledSize = CGSizeMake(imageSize.width * fillScale, imageSize.height * fillScale);
+        
+        // Center the image
+        CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
+        
+        backgroundImageView.frame = CGRectMake(
+            center.x - scaledSize.width / 2.0,
+            center.y - scaledSize.height / 2.0,
+            scaledSize.width,
+            scaledSize.height
+        );
+        
+        NSLog(@"Dashboard: Applied default positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+    }
     
     // Ensure main content has transparent background to show image
-    self.view.backgroundColor = [UIColor blackColor];
+    self.view.backgroundColor = [UIColor clearColor];
     if (self.collectionView) {
         self.collectionView.backgroundColor = [UIColor clearColor];
     }
