@@ -11,6 +11,7 @@
 #import "EntitySettingsViewController.h"
 #import "EntityCardCell.h"
 #import "WhiteboardLayout.h"
+#import "GridOverlayView.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
@@ -25,6 +26,7 @@
 @property (nonatomic, strong) NSIndexPath *draggingIndexPath;
 @property (nonatomic, assign) CGPoint initialDragOffset;
 @property (nonatomic, strong) UIView *draggingView;
+@property (nonatomic, strong) GridOverlayView *gridOverlay;
 @end
 
 @implementation DashboardViewController
@@ -55,6 +57,9 @@
     self.collectionView.bounces = YES;
     self.collectionView.alwaysBounceVertical = YES;
     self.collectionView.alwaysBounceHorizontal = YES;
+    
+    // Set up grid overlay
+    [self setupGridOverlay];
     
     // Add gesture recognizers for drag and drop
     [self setupGestureRecognizers];
@@ -91,6 +96,18 @@
     
     if (self.homeAssistantClient.isConnected) {
         [self.homeAssistantClient fetchStates];
+    }
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    
+    // Update grid overlay frame to match collection view content size
+    if (self.gridOverlay) {
+        CGSize contentSize = self.whiteboardLayout.collectionViewContentSize;
+        self.gridOverlay.frame = CGRectMake(0, 0, 
+                                           MAX(contentSize.width, self.collectionView.bounds.size.width),
+                                           MAX(contentSize.height, self.collectionView.bounds.size.height));
     }
 }
 
@@ -134,6 +151,15 @@
 
 #pragma mark - Gesture Recognizers
 
+- (void)setupGridOverlay {
+    // Create grid overlay that matches collection view content size
+    self.gridOverlay = [[GridOverlayView alloc] initWithFrame:self.collectionView.bounds];
+    self.gridOverlay.gridSize = self.whiteboardLayout.gridSize;
+    self.gridOverlay.gridSpacing = self.whiteboardLayout.gridSpacing;
+    [self.collectionView addSubview:self.gridOverlay];
+    [self.collectionView sendSubviewToBack:self.gridOverlay];
+}
+
 - (void)setupGestureRecognizers {
     // Long press gesture to start dragging
     self.longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
@@ -144,6 +170,27 @@
     self.panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
     self.panGesture.enabled = NO; // Initially disabled
     [self.collectionView addGestureRecognizer:self.panGesture];
+    
+    // Double tap gesture to toggle grid visibility
+    UITapGestureRecognizer *doubleTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
+    doubleTapGesture.numberOfTapsRequired = 2;
+    [self.collectionView addGestureRecognizer:doubleTapGesture];
+    
+    // Make sure single tap doesn't interfere with double tap
+    UITapGestureRecognizer *singleTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleSingleTap:)];
+    [singleTapGesture requireGestureRecognizerToFail:doubleTapGesture];
+    [self.collectionView addGestureRecognizer:singleTapGesture];
+}
+
+- (void)handleDoubleTap:(UITapGestureRecognizer *)gesture {
+    // Toggle grid visibility on double tap
+    BOOL currentlyVisible = self.gridOverlay.showGrid;
+    [self.gridOverlay setGridVisible:!currentlyVisible animated:YES];
+}
+
+- (void)handleSingleTap:(UITapGestureRecognizer *)gesture {
+    // Handle single tap if needed - currently handled by collection view delegate
+    // This is mainly here to properly handle the gesture precedence
 }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
@@ -193,6 +240,9 @@
     if (!cell) return;
     
     self.draggingIndexPath = indexPath;
+    
+    // Show grid overlay during dragging
+    [self.gridOverlay setGridVisible:YES animated:YES];
     
     // Create a snapshot view for dragging
     self.draggingView = [self createDraggingViewFromCell:cell];
@@ -286,6 +336,9 @@
 }
 
 - (void)endDragging {
+    // Hide grid overlay when dragging ends
+    [self.gridOverlay setGridVisible:NO animated:YES];
+    
     // Clean up dragging state
     if (self.draggingIndexPath) {
         UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:self.draggingIndexPath];

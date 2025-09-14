@@ -98,6 +98,19 @@
     return !CGSizeEqualToSize(oldBounds.size, newBounds.size);
 }
 
+// Support iOS 9.3.5 - provide targeted invalidation
+- (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds {
+    UICollectionViewLayoutInvalidationContext *context = [super invalidationContextForBoundsChange:newBounds];
+    
+    // Only invalidate if size actually changed
+    CGRect oldBounds = self.collectionView.bounds;
+    if (!CGSizeEqualToSize(oldBounds.size, newBounds.size)) {
+        context.invalidateEverything = YES;
+    }
+    
+    return context;
+}
+
 #pragma mark - Position Management
 
 - (void)setPosition:(CGPoint)position forItemAtIndexPath:(NSIndexPath *)indexPath {
@@ -207,6 +220,26 @@
         }
     }
     return NO;
+}
+
+#pragma mark - Utility Methods
+
+- (void)resetAllPositions {
+    [self.itemPositions removeAllObjects];
+    [self invalidateLayout];
+}
+
+- (NSInteger)numberOfAvailablePositions {
+    return [self availableGridPositions].count;
+}
+
+- (CGPoint)centerPointForPosition:(CGPoint)position {
+    return CGPointMake(position.x + self.gridSize.width / 2, 
+                      position.y + self.gridSize.height / 2);
+}
+
+- (CGRect)frameForGridPosition:(CGPoint)gridPosition {
+    return CGRectMake(gridPosition.x, gridPosition.y, self.gridSize.width, self.gridSize.height);
 }
 
 @end

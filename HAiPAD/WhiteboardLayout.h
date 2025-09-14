@@ -20,4 +20,10 @@
 - (NSArray *)availableGridPositions;
 - (BOOL)isGridPositionOccupied:(CGPoint)gridPosition;
 
+// Utility methods
+- (void)resetAllPositions;
+- (NSInteger)numberOfAvailablePositions;
+- (CGPoint)centerPointForPosition:(CGPoint)position;
+- (CGRect)frameForGridPosition:(CGPoint)gridPosition;
+
 @end
