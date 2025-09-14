@@ -248,31 +248,34 @@
                                                 <color key="textColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
-                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Dashboard Columns:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="columns-label">
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Grid Size:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="grid-section-label">
                                                 <rect key="frame" x="20" y="353" width="148" height="21"/>
                                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                                 <nil key="textColor"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
-                                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="1" translatesAutoresizingMaskIntoConstraints="NO" id="columns-segmented">
-                                                <rect key="frame" x="20" y="382" width="335" height="29"/>
-                                                <segments>
-                                                    <segment title="1"/>
-                                                    <segment title="2"/>
-                                                    <segment title="3"/>
-                                                    <segment title="4"/>
-                                                </segments>
-                                            </segmentedControl>
-                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Grid Size: 6x6" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="grid-size-label">
-                                                <rect key="frame" x="20" y="441" width="148" height="21"/>
-                                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                                <nil key="textColor"/>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Columns: 6" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="grid-columns-label">
+                                                <rect key="frame" x="20" y="384" width="148" height="21"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                                                <color key="textColor" white="0.6" alpha="1" colorSpace="calibratedWhite"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
-                                            <slider opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="6" minValue="1" maxValue="8" translatesAutoresizingMaskIntoConstraints="NO" id="grid-size-slider">
-                                                <rect key="frame" x="18" y="470" width="339" height="31"/>
+                                            <slider opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="6" minValue="2" maxValue="8" translatesAutoresizingMaskIntoConstraints="NO" id="grid-columns-slider">
+                                                <rect key="frame" x="18" y="413" width="339" height="31"/>
                                                 <connections>
-                                                    <action selector="gridSizeSliderChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="grid-slider-action"/>
+                                                    <action selector="gridColumnsSliderChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="grid-columns-slider-action"/>
+                                                </connections>
+                                            </slider>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Rows: 8" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="grid-rows-label">
+                                                <rect key="frame" x="20" y="454" width="148" height="21"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                                                <color key="textColor" white="0.6" alpha="1" colorSpace="calibratedWhite"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <slider opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="8" minValue="2" maxValue="12" translatesAutoresizingMaskIntoConstraints="NO" id="grid-rows-slider">
+                                                <rect key="frame" x="18" y="483" width="339" height="31"/>
+                                                <connections>
+                                                    <action selector="gridRowsSliderChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="grid-rows-slider-action"/>
                                                 </connections>
                                             </slider>
                                         </subviews>
@@ -297,16 +300,18 @@
                                             <constraint firstItem="7vr-Jn-e8E" firstAttribute="width" secondItem="qol-gI-N0U" secondAttribute="width" id="gvM-NW-ftn"/>
                                             <constraint firstAttribute="trailing" secondItem="jNY-rK-XQ3" secondAttribute="trailing" constant="20" id="rBy-3k-1zF"/>
                                             <constraint firstItem="jNY-rK-XQ3" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="veF-QJ-X3K"/>
-                                            <constraint firstItem="columns-label" firstAttribute="top" secondItem="jNY-rK-XQ3" secondAttribute="bottom" constant="30" id="col-label-top"/>
-                                            <constraint firstItem="columns-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="col-label-lead"/>
-                                            <constraint firstItem="columns-segmented" firstAttribute="top" secondItem="columns-label" secondAttribute="bottom" constant="8" id="col-seg-top"/>
-                                            <constraint firstItem="columns-segmented" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="col-seg-lead"/>
-                                            <constraint firstAttribute="trailing" secondItem="columns-segmented" secondAttribute="trailing" constant="20" id="col-seg-trail"/>
-                                            <constraint firstItem="grid-size-label" firstAttribute="top" secondItem="columns-segmented" secondAttribute="bottom" constant="30" id="grid-label-top"/>
-                                            <constraint firstItem="grid-size-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-label-lead"/>
-                                            <constraint firstItem="grid-size-slider" firstAttribute="top" secondItem="grid-size-label" secondAttribute="bottom" constant="8" id="grid-slider-top"/>
-                                            <constraint firstItem="grid-size-slider" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-slider-lead"/>
-                                            <constraint firstAttribute="trailing" secondItem="grid-size-slider" secondAttribute="trailing" constant="20" id="grid-slider-trail"/>
+                                            <constraint firstItem="grid-section-label" firstAttribute="top" secondItem="jNY-rK-XQ3" secondAttribute="bottom" constant="30" id="grid-section-label-top"/>
+                                            <constraint firstItem="grid-section-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-section-label-lead"/>
+                                            <constraint firstItem="grid-columns-label" firstAttribute="top" secondItem="grid-section-label" secondAttribute="bottom" constant="10" id="grid-columns-label-top"/>
+                                            <constraint firstItem="grid-columns-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-columns-label-lead"/>
+                                            <constraint firstItem="grid-columns-slider" firstAttribute="top" secondItem="grid-columns-label" secondAttribute="bottom" constant="8" id="grid-columns-slider-top"/>
+                                            <constraint firstItem="grid-columns-slider" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-columns-slider-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="grid-columns-slider" secondAttribute="trailing" constant="20" id="grid-columns-slider-trail"/>
+                                            <constraint firstItem="grid-rows-label" firstAttribute="top" secondItem="grid-columns-slider" secondAttribute="bottom" constant="10" id="grid-rows-label-top"/>
+                                            <constraint firstItem="grid-rows-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-rows-label-lead"/>
+                                            <constraint firstItem="grid-rows-slider" firstAttribute="top" secondItem="grid-rows-label" secondAttribute="bottom" constant="8" id="grid-rows-slider-top"/>
+                                            <constraint firstItem="grid-rows-slider" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-rows-slider-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="grid-rows-slider" secondAttribute="trailing" constant="20" id="grid-rows-slider-trail"/>
                                         </constraints>
                                     </view>
                                 </subviews>
@@ -335,9 +340,10 @@
                         <outlet property="testButton" destination="7vr-Jn-e8E" id="eMF-dE-iaq"/>
                         <outlet property="tokenTextField" destination="1iI-ap-5KH" id="f3Z-sX-VrP"/>
                         <outlet property="urlTextField" destination="j0c-ux-7iy" id="qYh-Tg-jGm"/>
-                        <outlet property="columnsSegmentedControl" destination="columns-segmented" id="columns-outlet"/>
-                        <outlet property="gridSizeSlider" destination="grid-size-slider" id="grid-slider-outlet"/>
-                        <outlet property="gridSizeLabel" destination="grid-size-label" id="grid-label-outlet"/>
+                        <outlet property="gridColumnsSlider" destination="grid-columns-slider" id="grid-columns-slider-outlet"/>
+                        <outlet property="gridColumnsLabel" destination="grid-columns-label" id="grid-columns-label-outlet"/>
+                        <outlet property="gridRowsSlider" destination="grid-rows-slider" id="grid-rows-slider-outlet"/>
+                        <outlet property="gridRowsLabel" destination="grid-rows-label" id="grid-rows-label-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Zio-cy-Dou" sceneMemberID="firstResponder"/>
