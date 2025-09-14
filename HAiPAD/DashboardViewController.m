@@ -20,7 +20,6 @@
 @property (nonatomic, strong) NSSet *enabledEntityIds;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
-@property (nonatomic, assign) NSInteger columnCount;
 @property (nonatomic, strong) WhiteboardGridLayout *whiteboardLayout;
 @property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
 @property (nonatomic, strong) NSMutableDictionary *entitySizes; // entity_id -> NSValue(CGSize)
@@ -106,13 +105,7 @@
     NSString *baseURL = [defaults stringForKey:@"ha_base_url"];
     NSString *accessToken = [defaults stringForKey:@"ha_access_token"];
 
-    // Load column count preference (now used for grid columns)
-    self.columnCount = [defaults integerForKey:@"ha_column_count"];
-    if (self.columnCount == 0) {
-        self.columnCount = 4; // Default to 4 columns for whiteboard
-    }
-
-    // Try to load new independent grid preferences first
+    // Load independent grid preferences with backward compatibility
     NSInteger gridColumns = [defaults integerForKey:@"ha_grid_columns"];
     NSInteger gridRows = [defaults integerForKey:@"ha_grid_rows"];
     
@@ -444,16 +437,10 @@
 
     // Load configuration for grid size (independent dimensions)
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSInteger columnCount = [defaults integerForKey:@"ha_column_count"];
     
-    // Try to load new independent grid preferences first
+    // Load independent grid preferences first
     NSInteger gridColumns = [defaults integerForKey:@"ha_grid_columns"];
     NSInteger gridRows = [defaults integerForKey:@"ha_grid_rows"];
-    
-    // Set defaults
-    if (columnCount == 0) {
-        columnCount = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
-    }
     
     // If new format doesn't exist, fall back to legacy grid size
     if (gridColumns == 0 && gridRows == 0) {

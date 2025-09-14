@@ -54,15 +54,7 @@
     self.statusLabel.textColor = [UIColor grayColor];
     self.statusLabel.numberOfLines = 0;
     
-    // Configure grid size slider (legacy - keep for backward compatibility)
-    if (self.gridSizeSlider) {
-        self.gridSizeSlider.minimumValue = 1.0;
-        self.gridSizeSlider.maximumValue = 8.0;
-        self.gridSizeSlider.continuous = YES;
-        [self.gridSizeSlider addTarget:self action:@selector(gridSizeSliderChanged:) forControlEvents:UIControlEventValueChanged];
-    }
-    
-    // Configure new independent grid controls
+    // Configure grid controls for independent column/row selection
     if (self.gridColumnsSlider) {
         self.gridColumnsSlider.minimumValue = 2.0;
         self.gridColumnsSlider.maximumValue = 8.0;
@@ -91,38 +83,22 @@
         self.tokenTextField.text = accessToken;
     }
     
-    // Load column preference (default to 2 columns)
-    NSInteger columnCount = [defaults integerForKey:@"ha_column_count"];
-    if (columnCount == 0) {
-        columnCount = 2; // Default to 2 columns
-    }
-    
-    // Set segmented control to correct index (1-4 columns maps to indices 0-3)
-    self.columnsSegmentedControl.selectedSegmentIndex = columnCount - 1;
-    
-    // Load grid size preference (legacy and new format)
-    if (self.gridSizeSlider && self.gridSizeLabel) {
-        NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
-        if (gridSize == 0) {
-            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-                gridSize = 6; // Default 6x6 for iPad
-            } else {
-                gridSize = 4; // Default 4x4 for iPhone
-            }
-        }
-        
-        self.gridSizeSlider.value = gridSize;
-        [self updateGridSizeLabel];
-    }
-    
-    // Load new independent grid preferences
+    // Load independent grid preferences with backward compatibility
     if (self.gridColumnsSlider && self.gridColumnsLabel) {
         NSInteger gridColumns = [defaults integerForKey:@"ha_grid_columns"];
+        
+        // If new format doesn't exist, try to migrate from legacy format
         if (gridColumns == 0) {
-            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-                gridColumns = 6; // Default 6 columns for iPad
+            NSInteger legacyGridSize = [defaults integerForKey:@"ha_grid_size"];
+            if (legacyGridSize > 0) {
+                gridColumns = legacyGridSize;
             } else {
-                gridColumns = 4; // Default 4 columns for iPhone
+                // Set device-appropriate defaults
+                if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                    gridColumns = 6; // Default 6 columns for iPad
+                } else {
+                    gridColumns = 4; // Default 4 columns for iPhone
+                }
             }
         }
         
@@ -132,11 +108,19 @@
     
     if (self.gridRowsSlider && self.gridRowsLabel) {
         NSInteger gridRows = [defaults integerForKey:@"ha_grid_rows"];
+        
+        // If new format doesn't exist, try to migrate from legacy format
         if (gridRows == 0) {
-            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-                gridRows = 8; // Default 8 rows for iPad
+            NSInteger legacyGridSize = [defaults integerForKey:@"ha_grid_size"];
+            if (legacyGridSize > 0) {
+                gridRows = legacyGridSize;
             } else {
-                gridRows = 6; // Default 6 rows for iPhone
+                // Set device-appropriate defaults
+                if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                    gridRows = 8; // Default 8 rows for iPad
+                } else {
+                    gridRows = 6; // Default 6 rows for iPhone
+                }
             }
         }
         
@@ -177,17 +161,7 @@
     [defaults setObject:url forKey:@"ha_base_url"];
     [defaults setObject:token forKey:@"ha_access_token"];
     
-    // Save column preference (segmented control index 0-3 maps to 1-4 columns)
-    NSInteger columnCount = self.columnsSegmentedControl.selectedSegmentIndex + 1;
-    [defaults setInteger:columnCount forKey:@"ha_column_count"];
-    
-    // Save grid size preference (legacy - keep for backward compatibility)
-    if (self.gridSizeSlider) {
-        NSInteger gridSize = (NSInteger)self.gridSizeSlider.value;
-        [defaults setInteger:gridSize forKey:@"ha_grid_size"];
-    }
-    
-    // Save new independent grid preferences
+    // Save independent grid preferences
     if (self.gridColumnsSlider) {
         NSInteger gridColumns = (NSInteger)self.gridColumnsSlider.value;
         [defaults setInteger:gridColumns forKey:@"ha_grid_columns"];
@@ -327,23 +301,12 @@
     [self.view endEditing:YES];
 }
 
-- (IBAction)gridSizeSliderChanged:(id)sender {
-    [self updateGridSizeLabel];
-}
-
 - (IBAction)gridColumnsSliderChanged:(id)sender {
     [self updateGridColumnsLabel];
 }
 
 - (IBAction)gridRowsSliderChanged:(id)sender {
     [self updateGridRowsLabel];
-}
-
-- (void)updateGridSizeLabel {
-    if (self.gridSizeSlider && self.gridSizeLabel) {
-        NSInteger gridSize = (NSInteger)self.gridSizeSlider.value;
-        self.gridSizeLabel.text = [NSString stringWithFormat:@"Grid Size: %ldx%ld", (long)gridSize, (long)gridSize];
-    }
 }
 
 - (void)updateGridColumnsLabel {
