@@ -41,6 +41,7 @@
 @property (nonatomic, strong) UIColor *navbarColor;
 @property (nonatomic, strong) UIImage *backgroundImage;
 @property (nonatomic, assign) NSInteger backgroundType; // 0 = color, 1 = image
+@property (nonatomic, assign) BOOL backgroundImageApplied; // Flag to prevent excessive reapplication
 @end
 
 @implementation DashboardViewController
@@ -60,6 +61,9 @@
 
     // Initialize drag and drop state
     self.hasPendingReload = NO;
+    
+    // Initialize background image state
+    self.backgroundImageApplied = NO;
 
     // Initialize navigation bar state - hidden by default
     self.navigationBarHidden = YES;
@@ -133,6 +137,8 @@
     
     // Reload and apply customization settings in case they changed
     [self loadCustomizationSettings];
+    // Reset background image flag when reloading settings to ensure proper reapplication
+    self.backgroundImageApplied = NO;
     [self applyCustomizationSettings];
 
     if (self.homeAssistantClient.isConnected) {
@@ -147,8 +153,9 @@
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     
-    // Reapply background image after layout to ensure proper scaling
-    if (self.backgroundType == 1 && self.backgroundImage) {
+    // Only reapply background image if it hasn't been applied yet or if the view size changed significantly
+    if (self.backgroundType == 1 && self.backgroundImage && !self.backgroundImageApplied) {
+        NSLog(@"Dashboard: Reapplying background image after layout - view bounds: %@", NSStringFromCGRect(self.view.bounds));
         [self applyBackgroundImage];
     }
 }
@@ -273,6 +280,9 @@
         if (statusBarOverlay) {
             [statusBarOverlay removeFromSuperview];
         }
+        
+        // Reset background image applied flag since we're not using an image
+        self.backgroundImageApplied = NO;
     }
     
     // Apply navbar color
@@ -284,16 +294,19 @@
 - (void)applyBackgroundImage {
     if (!self.backgroundImage) {
         NSLog(@"Dashboard: No background image to apply");
+        self.backgroundImageApplied = NO;
         return;
     }
     
     // Validate the image before processing
     if (![self isValidImageForBackground:self.backgroundImage]) {
         NSLog(@"Dashboard: Invalid background image detected");
+        self.backgroundImageApplied = NO;
         return;
     }
     
-    NSLog(@"Dashboard: Applying background image with size: %@", NSStringFromCGSize(self.backgroundImage.size));
+    NSLog(@"Dashboard: Applying background image with size: %@ in view bounds: %@", 
+          NSStringFromCGSize(self.backgroundImage.size), NSStringFromCGRect(self.view.bounds));
     
     // Remove any existing background image views to avoid duplicates
     UIView *existingBackgroundView = [self.view viewWithTag:999];
@@ -331,9 +344,20 @@
     // Validate view and image sizes
     if (viewSize.width <= 0 || viewSize.height <= 0 || imageSize.width <= 0 || imageSize.height <= 0) {
         NSLog(@"Dashboard: Invalid sizes - view: %@, image: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
-        // Set frame to fill view as fallback
-        backgroundImageView.frame = self.view.bounds;
-        return;
+        // Set frame to fill view as fallback, but use a safe fallback color
+        if (viewSize.width > 0 && viewSize.height > 0) {
+            backgroundImageView.frame = self.view.bounds;
+        } else {
+            // View size is invalid - remove the image view and use fallback color
+            [backgroundImageView removeFromSuperview];
+            self.view.backgroundColor = self.dashboardBackgroundColor ?: [UIColor whiteColor];
+            if (self.collectionView) {
+                self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+            }
+            self.backgroundImageApplied = NO;
+            NSLog(@"Dashboard: View bounds invalid, using color fallback");
+            return;
+        }
     }
     
     NSLog(@"Dashboard: View size: %@, Image size: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
@@ -399,10 +423,24 @@
         NSLog(@"Dashboard: Aspect ratios - view: %.3f, image: %.3f", viewAspectRatio, imageAspectRatio);
     }
     
-    // Ensure main content has transparent background to show image
-    self.view.backgroundColor = [UIColor clearColor];
-    if (self.collectionView) {
-        self.collectionView.backgroundColor = [UIColor clearColor];
+    // Only set transparent backgrounds AFTER we've successfully positioned the image
+    // This prevents the black background issue
+    if (backgroundImageView && !CGRectIsEmpty(backgroundImageView.frame)) {
+        // Only make backgrounds transparent if the image view is properly positioned
+        self.view.backgroundColor = [UIColor clearColor];
+        if (self.collectionView) {
+            self.collectionView.backgroundColor = [UIColor clearColor];
+        }
+        NSLog(@"Dashboard: Set transparent backgrounds - image view frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+        self.backgroundImageApplied = YES; // Mark as successfully applied
+    } else {
+        // Fallback to prevent black screen - use a fallback color
+        NSLog(@"Dashboard: Warning - background image view not properly positioned, using fallback");
+        self.view.backgroundColor = self.dashboardBackgroundColor ?: [UIColor whiteColor];
+        if (self.collectionView) {
+            self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        }
+        self.backgroundImageApplied = NO; // Mark as not applied
     }
     
     // Update status bar appearance for better visibility
@@ -576,6 +614,11 @@
 - (IBAction)toggleNavigationBarTapped:(id)sender {
     self.navigationBarHidden = !self.navigationBarHidden;
     
+    // Reset background image flag to ensure it gets reapplied after layout changes
+    if (self.backgroundType == 1 && self.backgroundImage) {
+        self.backgroundImageApplied = NO;
+    }
+    
     [UIView animateWithDuration:0.3 animations:^{
         if (self.navigationBarHidden) {
             // Hide navigation bar by setting its height to 0
@@ -607,6 +650,11 @@
     } completion:^(BOOL finished) {
         if (!self.navigationBarHidden) {
             self.toggleButton.hidden = YES;
+        }
+        
+        // Reapply background image after layout changes if needed
+        if (self.backgroundType == 1 && self.backgroundImage && !self.backgroundImageApplied) {
+            [self applyBackgroundImage];
         }
     }];
 }
