@@ -668,7 +668,7 @@
     for (NSDictionary *entity in states) {
         NSString *entityId = entity[@"entity_id"];
         if (entityId) {
-            // Include lights, switches, sensors, and climate entities
+            // Include all supported entity types from our EntityViewFactory
             if ([entityId hasPrefix:@"light."] ||
                 [entityId hasPrefix:@"switch."] ||
                 [entityId hasPrefix:@"sensor."] ||
@@ -676,7 +676,20 @@
                 [entityId hasPrefix:@"climate."] ||
                 [entityId hasPrefix:@"cover."] ||
                 [entityId hasPrefix:@"fan."] ||
-                [entityId hasPrefix:@"lock."]) {
+                [entityId hasPrefix:@"lock."] ||
+                [entityId hasPrefix:@"media_player."] ||
+                [entityId hasPrefix:@"humidifier."] ||
+                [entityId hasPrefix:@"alarm_control_panel."] ||
+                [entityId hasPrefix:@"camera."] ||
+                [entityId hasPrefix:@"person."] ||
+                [entityId hasPrefix:@"device_tracker."] ||
+                [entityId hasPrefix:@"scene."] ||
+                [entityId hasPrefix:@"script."] ||
+                [entityId hasPrefix:@"automation."] ||
+                [entityId hasPrefix:@"input_boolean."] ||
+                [entityId hasPrefix:@"input_number."] ||
+                [entityId hasPrefix:@"input_select."] ||
+                [entityId hasPrefix:@"input_datetime."]) {
                 [filteredEntities addObject:entity];
             }
         }
