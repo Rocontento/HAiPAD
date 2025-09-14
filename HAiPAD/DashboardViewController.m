@@ -264,6 +264,45 @@
     [popup presentFromViewController:self animated:YES];
 }
 
+- (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStateChange:(NSDictionary *)stateChange {
+    // Handle individual state changes in real-time
+    NSString *changedEntityId = stateChange[@"entity_id"];
+    if (!changedEntityId) return;
+    
+    // Find the entity in our current list and update it
+    NSMutableArray *mutableEntities = [self.entities mutableCopy];
+    BOOL found = NO;
+    
+    for (NSInteger i = 0; i < mutableEntities.count; i++) {
+        NSDictionary *entity = mutableEntities[i];
+        NSString *entityId = entity[@"entity_id"];
+        
+        if ([entityId isEqualToString:changedEntityId]) {
+            // Replace the entity with the updated state
+            mutableEntities[i] = stateChange;
+            found = YES;
+            
+            // Update the specific cell
+            NSIndexPath *indexPath = [NSIndexPath indexPathForItem:i inSection:0];
+            UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+            
+            if ([cell isKindOfClass:[EntityCardCell class]]) {
+                EntityCardCell *entityCell = (EntityCardCell *)cell;
+                [entityCell configureWithEntity:stateChange];
+                
+                // Add a subtle animation to indicate the update
+                [self animateEntityUpdate:entityCell];
+            }
+            break;
+        }
+    }
+    
+    // Update the entities array if we found and updated the entity
+    if (found) {
+        self.entities = [mutableEntities copy];
+    }
+}
+
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
@@ -309,20 +348,29 @@
     NSString *entityId = entity[@"entity_id"];
     NSString *state = entity[@"state"];
 
-    // Handle tappable entities
+    // Handle tappable entities with optimistic UI updates
     if ([entityId hasPrefix:@"light."]) {
+        NSString *newState = [state isEqualToString:@"on"] ? @"off" : @"on";
+        [self updateEntityStateOptimistically:indexPath newState:newState];
+        
         if ([state isEqualToString:@"on"]) {
             [self.homeAssistantClient callService:@"light" service:@"turn_off" entityId:entityId];
         } else {
             [self.homeAssistantClient callService:@"light" service:@"turn_on" entityId:entityId];
         }
     } else if ([entityId hasPrefix:@"switch."]) {
+        NSString *newState = [state isEqualToString:@"on"] ? @"off" : @"on";
+        [self updateEntityStateOptimistically:indexPath newState:newState];
+        
         if ([state isEqualToString:@"on"]) {
             [self.homeAssistantClient callService:@"switch" service:@"turn_off" entityId:entityId];
         } else {
             [self.homeAssistantClient callService:@"switch" service:@"turn_on" entityId:entityId];
         }
     } else if ([entityId hasPrefix:@"fan."]) {
+        NSString *newState = [state isEqualToString:@"on"] ? @"off" : @"on";
+        [self updateEntityStateOptimistically:indexPath newState:newState];
+        
         if ([state isEqualToString:@"on"]) {
             [self.homeAssistantClient callService:@"fan" service:@"turn_off" entityId:entityId];
         } else {
@@ -699,6 +747,41 @@
                                                                              type:CustomPopupTypeSensorInfo
                                                                      actionHandler:nil];
     [popup presentFromViewController:self animated:YES];
+}
+
+- (void)animateEntityUpdate:(EntityCardCell *)cell {
+    if (!cell) return;
+    
+    // Subtle pulse animation to indicate real-time update
+    [UIView animateWithDuration:0.15 animations:^{
+        cell.transform = CGAffineTransformMakeScale(1.02, 1.02);
+        cell.alpha = 0.8;
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.15 animations:^{
+            cell.transform = CGAffineTransformIdentity;
+            cell.alpha = 1.0;
+        }];
+    }];
+}
+
+- (void)updateEntityStateOptimistically:(NSIndexPath *)indexPath newState:(NSString *)newState {
+    if (indexPath.item >= self.entities.count) return;
+    
+    // Create a mutable copy of the entity with the new state
+    NSMutableDictionary *updatedEntity = [self.entities[indexPath.item] mutableCopy];
+    updatedEntity[@"state"] = newState;
+    
+    // Update the entities array
+    NSMutableArray *mutableEntities = [self.entities mutableCopy];
+    mutableEntities[indexPath.item] = [updatedEntity copy];
+    self.entities = [mutableEntities copy];
+    
+    // Update the cell immediately for instant feedback
+    EntityCardCell *cell = (EntityCardCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
+    if ([cell isKindOfClass:[EntityCardCell class]]) {
+        [cell configureWithEntity:updatedEntity];
+        [self animateEntityUpdate:cell];
+    }
 }
 
 @end

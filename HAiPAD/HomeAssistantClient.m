@@ -8,9 +8,16 @@
 
 #import "HomeAssistantClient.h"
 
-@interface HomeAssistantClient ()
+@interface HomeAssistantClient () <NSURLSessionWebSocketDelegate>
 @property (nonatomic, strong) NSURLSession *urlSession;
+@property (nonatomic, strong) NSURLSession *webSocketSession;
+@property (nonatomic, strong) NSURLSessionWebSocketTask *webSocketTask;
 @property (nonatomic, assign) BOOL isConnected;
+@property (nonatomic, assign) BOOL webSocketConnected;
+@property (nonatomic, strong) NSTimer *autoRefreshTimer;
+@property (nonatomic, strong) NSTimer *reconnectTimer;
+@property (nonatomic, assign) NSInteger websocketId;
+@property (nonatomic, strong) NSMutableDictionary *entitiesState;
 @end
 
 @implementation HomeAssistantClient
@@ -32,6 +39,15 @@
         config.timeoutIntervalForResource = 60.0;
         _urlSession = [NSURLSession sessionWithConfiguration:config];
         _isConnected = NO;
+        _webSocketConnected = NO;
+        _autoRefreshEnabled = YES;
+        _autoRefreshInterval = 2.0; // Default 2 seconds for fast updates
+        _websocketId = 1;
+        _entitiesState = [NSMutableDictionary dictionary];
+        
+        // Create WebSocket session
+        NSURLSessionConfiguration *wsConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
+        _webSocketSession = [NSURLSession sessionWithConfiguration:wsConfig delegate:self delegateQueue:nil];
     }
     return self;
 }
@@ -45,6 +61,12 @@
 }
 
 - (void)disconnect {
+    // Stop auto refresh
+    [self stopAutoRefresh];
+    
+    // Disconnect WebSocket
+    [self disconnectWebSocket];
+    
     self.isConnected = NO;
     if ([self.delegate respondsToSelector:@selector(homeAssistantClientDidDisconnect:)]) {
         [self.delegate homeAssistantClientDidDisconnect:self];
@@ -81,9 +103,15 @@
                 NSError *jsonError;
                 NSArray *states = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
                 if (!jsonError && [states isKindOfClass:[NSArray class]]) {
+                    // Update internal state tracking
+                    [self updateEntitiesState:states];
+                    
                     if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didReceiveStates:)]) {
                         [self.delegate homeAssistantClient:self didReceiveStates:states];
                     }
+                    
+                    // Start real-time updates
+                    [self startRealTimeUpdates];
                 }
             } else {
                 self.isConnected = NO;
@@ -127,6 +155,9 @@
                 NSError *jsonError;
                 NSArray *states = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
                 if (!jsonError && [states isKindOfClass:[NSArray class]]) {
+                    // Update internal state tracking
+                    [self updateEntitiesState:states];
+                    
                     if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didReceiveStates:)]) {
                         [self.delegate homeAssistantClient:self didReceiveStates:states];
                     }
@@ -172,8 +203,8 @@
                         [self.delegate homeAssistantClient:self didFailWithError:error];
                     }
                 }
-                // Refresh states after service call with a small delay to allow Home Assistant to process the change
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                // Refresh states after service call with a much shorter delay for better responsiveness
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self fetchStates];
                 });
             });
@@ -213,14 +244,235 @@
                         [self.delegate homeAssistantClient:self didFailWithError:error];
                     }
                 }
-                // Refresh states after service call with a small delay to allow Home Assistant to process the change
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                // Refresh states after service call with a much shorter delay for better responsiveness
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self fetchStates];
                 });
             });
         }];
         
         [task resume];
+    }
+}
+
+#pragma mark - Real-time Updates
+
+- (void)startRealTimeUpdates {
+    // Try WebSocket first for best real-time performance
+    [self connectWebSocket];
+    
+    // Start auto refresh as fallback
+    [self startAutoRefresh];
+}
+
+- (void)startAutoRefresh {
+    if (!self.autoRefreshEnabled || self.autoRefreshTimer) {
+        return;
+    }
+    
+    self.autoRefreshTimer = [NSTimer scheduledTimerWithTimeInterval:self.autoRefreshInterval
+                                                             target:self
+                                                           selector:@selector(autoRefreshTimerFired:)
+                                                           userInfo:nil
+                                                            repeats:YES];
+}
+
+- (void)stopAutoRefresh {
+    if (self.autoRefreshTimer) {
+        [self.autoRefreshTimer invalidate];
+        self.autoRefreshTimer = nil;
+    }
+}
+
+- (void)autoRefreshTimerFired:(NSTimer *)timer {
+    if (self.isConnected && !self.webSocketConnected) {
+        // Only fetch via HTTP if WebSocket is not connected
+        [self fetchStates];
+    }
+}
+
+- (void)connectWebSocket {
+    if (self.webSocketTask) {
+        return; // Already connecting or connected
+    }
+    
+    // Try to construct WebSocket URL
+    NSString *wsURL = [self.baseURL stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
+    wsURL = [wsURL stringByReplacingOccurrencesOfString:@"https://" withString:@"wss://"];
+    wsURL = [wsURL stringByAppendingString:@"/api/websocket"];
+    
+    NSURL *url = [NSURL URLWithString:wsURL];
+    if (!url) {
+        NSLog(@"Failed to create WebSocket URL from: %@", self.baseURL);
+        return;
+    }
+    
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    self.webSocketTask = [self.webSocketSession webSocketTaskWithRequest:request];
+    [self.webSocketTask resume];
+    
+    // Start receiving messages
+    [self receiveWebSocketMessage];
+}
+
+- (void)disconnectWebSocket {
+    if (self.webSocketTask) {
+        [self.webSocketTask cancelWithCloseCode:NSURLSessionWebSocketCloseCodeNormalClosure reason:nil];
+        self.webSocketTask = nil;
+    }
+    self.webSocketConnected = NO;
+    
+    // Stop reconnection timer
+    if (self.reconnectTimer) {
+        [self.reconnectTimer invalidate];
+        self.reconnectTimer = nil;
+    }
+}
+
+- (void)receiveWebSocketMessage {
+    if (!self.webSocketTask) return;
+    
+    [self.webSocketTask receiveMessageWithCompletionHandler:^(NSURLSessionWebSocketMessage *message, NSError *error) {
+        if (error) {
+            NSLog(@"WebSocket receive error: %@", error.localizedDescription);
+            return;
+        }
+        
+        if (message.type == NSURLSessionWebSocketMessageTypeString) {
+            [self handleWebSocketMessage:message.string];
+        }
+        
+        // Continue receiving messages
+        [self receiveWebSocketMessage];
+    }];
+}
+
+- (void)handleWebSocketMessage:(NSString *)message {
+    NSError *error;
+    NSData *data = [message dataUsingEncoding:NSUTF8StringEncoding];
+    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+    
+    if (error || !json) {
+        NSLog(@"Failed to parse WebSocket message: %@", error.localizedDescription);
+        return;
+    }
+    
+    NSString *type = json[@"type"];
+    
+    if ([type isEqualToString:@"auth_required"]) {
+        // Send authentication
+        [self sendWebSocketAuth];
+    } else if ([type isEqualToString:@"auth_ok"]) {
+        // Authentication successful, subscribe to state changes
+        self.webSocketConnected = YES;
+        [self subscribeToStateChanges];
+    } else if ([type isEqualToString:@"auth_invalid"]) {
+        NSLog(@"WebSocket authentication failed");
+        [self disconnectWebSocket];
+    } else if ([type isEqualToString:@"event"]) {
+        [self handleStateChangeEvent:json];
+    }
+}
+
+- (void)sendWebSocketAuth {
+    if (!self.webSocketTask) return;
+    
+    NSDictionary *authMessage = @{
+        @"type": @"auth",
+        @"access_token": self.accessToken
+    };
+    
+    NSError *error;
+    NSData *data = [NSJSONSerialization dataWithJSONObject:authMessage options:0 error:&error];
+    if (!error) {
+        NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
+        [self.webSocketTask sendMessage:message completionHandler:^(NSError *error) {
+            if (error) {
+                NSLog(@"Failed to send auth message: %@", error.localizedDescription);
+            }
+        }];
+    }
+}
+
+- (void)subscribeToStateChanges {
+    if (!self.webSocketTask) return;
+    
+    NSDictionary *subscribeMessage = @{
+        @"id": @(self.websocketId++),
+        @"type": @"subscribe_events",
+        @"event_type": @"state_changed"
+    };
+    
+    NSError *error;
+    NSData *data = [NSJSONSerialization dataWithJSONObject:subscribeMessage options:0 error:&error];
+    if (!error) {
+        NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
+        [self.webSocketTask sendMessage:message completionHandler:^(NSError *error) {
+            if (error) {
+                NSLog(@"Failed to send subscribe message: %@", error.localizedDescription);
+            }
+        }];
+    }
+}
+
+- (void)handleStateChangeEvent:(NSDictionary *)eventData {
+    NSDictionary *event = eventData[@"event"];
+    if (!event) return;
+    
+    NSDictionary *newState = event[@"data"][@"new_state"];
+    if (!newState) return;
+    
+    // Update internal state tracking
+    NSString *entityId = newState[@"entity_id"];
+    if (entityId) {
+        self.entitiesState[entityId] = newState;
+        
+        // Notify delegate of the individual state change
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didReceiveStateChange:)]) {
+                [self.delegate homeAssistantClient:self didReceiveStateChange:newState];
+            }
+        });
+    }
+}
+
+- (void)updateEntitiesState:(NSArray *)states {
+    for (NSDictionary *state in states) {
+        NSString *entityId = state[@"entity_id"];
+        if (entityId) {
+            self.entitiesState[entityId] = state;
+        }
+    }
+}
+
+#pragma mark - NSURLSessionWebSocketDelegate
+
+- (void)URLSession:(NSURLSession *)session webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask didOpenWithProtocol:(NSString *)protocol {
+    NSLog(@"WebSocket connected");
+}
+
+- (void)URLSession:(NSURLSession *)session webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask didCloseWithCode:(NSURLSessionWebSocketCloseCode)closeCode reason:(NSData *)reason {
+    NSLog(@"WebSocket disconnected with code: %ld", (long)closeCode);
+    self.webSocketConnected = NO;
+    self.webSocketTask = nil;
+    
+    // Try to reconnect after a delay if we were previously connected
+    if (self.isConnected && closeCode != NSURLSessionWebSocketCloseCodeNormalClosure) {
+        self.reconnectTimer = [NSTimer scheduledTimerWithTimeInterval:5.0
+                                                               target:self
+                                                             selector:@selector(reconnectWebSocket:)
+                                                             userInfo:nil
+                                                              repeats:NO];
+    }
+}
+
+- (void)reconnectWebSocket:(NSTimer *)timer {
+    self.reconnectTimer = nil;
+    if (self.isConnected) {
+        [self connectWebSocket];
     }
 }
 

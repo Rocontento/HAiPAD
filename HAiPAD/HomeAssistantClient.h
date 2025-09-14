@@ -16,6 +16,7 @@
 - (void)homeAssistantClient:(HomeAssistantClient *)client didFailWithError:(NSError *)error;
 - (void)homeAssistantClientDidConnect:(HomeAssistantClient *)client;
 - (void)homeAssistantClientDidDisconnect:(HomeAssistantClient *)client;
+- (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStateChange:(NSDictionary *)stateChange;
 @end
 
 @interface HomeAssistantClient : NSObject
@@ -24,6 +25,8 @@
 @property (nonatomic, strong) NSString *baseURL;
 @property (nonatomic, strong) NSString *accessToken;
 @property (nonatomic, readonly) BOOL isConnected;
+@property (nonatomic, assign) BOOL autoRefreshEnabled;
+@property (nonatomic, assign) NSTimeInterval autoRefreshInterval;
 
 + (instancetype)sharedClient;
 
@@ -32,5 +35,11 @@
 - (void)fetchStates;
 - (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId;
 - (void)callClimateService:(NSString *)service entityId:(NSString *)entityId temperature:(float)temperature;
+
+// Real-time updates
+- (void)startAutoRefresh;
+- (void)stopAutoRefresh;
+- (void)connectWebSocket;
+- (void)disconnectWebSocket;
 
 @end
