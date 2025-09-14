@@ -1,25 +1,28 @@
-# Grid Configuration Enhancement Features
+# Independent Grid Configuration Feature
 
 ## Overview
 
-This implementation adds two major enhancements to the HAiPAD whiteboard grid system:
+This implementation provides an enhanced grid configuration system for the HAiPAD whiteboard that allows independent control of horizontal (columns) and vertical (rows) grid dimensions, plus visual resize feedback.
 
-1. **Independent Grid Size Configuration** - Allows separate control of horizontal (columns) and vertical (rows) grid dimensions
-2. **Visual Resize Feedback** - Provides real-time visual feedback when resizing cards showing grid occupation
+## Features
 
-## New Features
+### 1. Independent Grid Size Configuration
 
-### 1. Independent Grid Dimensions
+The Grid Size configuration now allows separate control of:
 
-Previously, the grid size was configured with a single slider that set both columns and rows to the same value (e.g., 4x4, 6x6). Now you can configure:
-
-- **Columns**: 2-8 columns (horizontal grid dimension)
+- **Columns**: 2-8 columns (horizontal grid dimension)  
 - **Rows**: 2-12 rows (vertical grid dimension)
 
-This allows for more flexible layouts like:
+This enables flexible layouts such as:
+- 3 columns × 10 rows for narrow, tall layouts
+- 8 columns × 6 rows for wide, compact layouts  
 - 6 columns × 8 rows for iPad landscape
 - 4 columns × 6 rows for iPhone
-- Custom ratios based on your entity count and screen space
+
+**Key Changes:**
+- Removed dashboard columns segmented control
+- Replaced square grid size slider with independent column/row sliders
+- Grid dimensions are now controlled entirely through the Grid Size section
 
 ### 2. Visual Resize Feedback
 
@@ -27,7 +30,7 @@ When resizing entity cards in edit mode:
 
 - **Grid Overlay**: Semi-transparent grid lines appear showing the entire grid structure
 - **Size Highlighting**: The area the card will occupy is highlighted in blue
-- **Size Indicator**: A label shows the exact grid dimensions (e.g., "2x1", "3x2")
+- **Size Indicator**: A label shows the exact grid dimensions (e.g., "2×1", "3×2")
 - **Real-time Updates**: Visual feedback updates immediately as you drag the resize handle
 
 ## Implementation Details
@@ -35,19 +38,21 @@ When resizing entity cards in edit mode:
 ### Modified Files
 
 1. **ConfigurationViewController.h/m**
-   - Added `gridColumnsSlider`, `gridRowsSlider` properties
-   - Added corresponding label properties and action methods
-   - Added new NSUserDefaults keys: `ha_grid_columns`, `ha_grid_rows`
+   - Removed `columnsSegmentedControl` and `gridSizeSlider` (legacy controls)
+   - Uses `gridColumnsSlider` and `gridRowsSlider` as primary grid size controls
+   - Saves settings to NSUserDefaults keys: `ha_grid_columns`, `ha_grid_rows`
+   - Provides backward compatibility with legacy `ha_grid_size` setting
 
-2. **WhiteboardGridLayout.h/m**
+2. **DashboardViewController.m**
+   - Removed dashboard columns functionality (`ha_column_count`)
+   - Grid layout uses only `ha_grid_columns` and `ha_grid_rows` settings
+   - Automatic migration from legacy grid size format
+   - Integrated grid overlay display during card resizing
+
+3. **WhiteboardGridLayout.h/m**
    - Added grid overlay functionality
    - Added methods: `showGridOverlayInView:`, `hideGridOverlay`, `highlightGridCells:size:`
    - Enhanced visual feedback system with animated highlighting
-
-3. **DashboardViewController.m**
-   - Updated configuration loading to prioritize new format but maintain backward compatibility
-   - Integrated grid overlay display during card resizing
-   - Enhanced EntityCardCellDelegate methods
 
 4. **EntityCardCell.m**
    - Improved resize gesture sensitivity (reduced threshold for more responsive feedback)
@@ -70,29 +75,34 @@ The new system uses these NSUserDefaults keys:
 
 ## User Interface Setup
 
-### Adding New Controls to Configuration Screen
+### Adding Grid Size Controls to Configuration Screen
 
-The implementation adds new UI properties, but the actual Interface Builder setup needs to be done manually:
+The implementation requires manual Interface Builder setup for the new grid controls:
 
 1. **Open Main.storyboard in Xcode**
 2. **Navigate to ConfigurationViewController scene**
-3. **Add new UI elements:**
+3. **Remove or hide the following (if present):**
+   - Dashboard columns segmented control
+   - Legacy grid size slider and label
+
+4. **Add Grid Size controls:**
 
    ```
-   Grid Columns Section:
-   - UILabel: "Grid Columns"
+   Grid Size Section:
+   - UILabel: "Grid Size"
+   
+   Columns Control:
+   - UILabel: "Columns" 
    - UISlider: Range 2-8, connect to gridColumnsSlider outlet
    - UILabel: "Columns: 6", connect to gridColumnsLabel outlet
    - Connect slider Value Changed event to gridColumnsSliderChanged: action
 
-   Grid Rows Section:
-   - UILabel: "Grid Rows"  
-   - UISlider: Range 2-12, connect to gridRowsSlider outlet
+   Rows Control:
+   - UILabel: "Rows"
+   - UISlider: Range 2-12, connect to gridRowsSlider outlet  
    - UILabel: "Rows: 8", connect to gridRowsLabel outlet
    - Connect slider Value Changed event to gridRowsSliderChanged: action
    ```
-
-4. **Optional: Hide or relabel existing gridSizeSlider as "Legacy Grid Size"**
 
 ### Recommended Layout
 
@@ -105,10 +115,10 @@ Configuration Screen Layout:
 │ Access Token                    │
 │ [text field]                    │
 │                                 │
-│ Grid Columns                    │
+│ Grid Size                       │
+│ Columns                         │
 │ [slider] Columns: 6             │
-│                                 │
-│ Grid Rows                       │
+│ Rows                            │
 │ [slider] Rows: 8                │
 │                                 │
 │ [Test] [Save]                   │
