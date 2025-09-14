@@ -31,5 +31,6 @@
 - (void)loadCustomizationSettings;
 - (void)applyCustomizationSettings;
 - (void)applyBackgroundImage;
+- (void)updateStatusBarAppearance;
 
 @end
