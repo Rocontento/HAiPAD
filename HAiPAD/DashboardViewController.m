@@ -86,9 +86,11 @@
     [self.collectionView addSubview:self.refreshControl];
     [self.collectionView sendSubviewToBack:self.refreshControl];
     
-    // Don't add edit button to navigation bar initially - will be shown when in edit mode
+    // Don't add edit button to navigation bar initially - will be shown as regular button when in edit mode
     // Edit mode is entered via long press gesture
-    self.editBarButton = [[UIBarButtonItem alloc] initWithTitle:@"Done editing" style:UIBarButtonItemStyleDone target:self action:@selector(editButtonTapped:)];
+    
+    // Initially hide the Done editing button
+    self.doneEditingButton.hidden = YES;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -181,12 +183,17 @@
 }
 
 - (IBAction)editButtonTapped:(id)sender {
-    // This only exits edit mode now - entry is via long press
+    // This is for backward compatibility - same as doneEditingButtonTapped
+    [self doneEditingButtonTapped:sender];
+}
+
+- (IBAction)doneEditingButtonTapped:(id)sender {
+    // Exit edit mode when Done editing button is tapped
     if (self.editingMode) {
         [self setEditingMode:NO];
         
-        // Hide the Done button
-        self.navigationItem.rightBarButtonItem = nil;
+        // Hide the Done editing button
+        self.doneEditingButton.hidden = YES;
         
         // Restore normal status
         self.statusLabel.text = @"Connected";
@@ -727,7 +734,7 @@
     [self setEditingMode:YES];
     
     // Show the Done editing button
-    self.navigationItem.rightBarButtonItem = self.editBarButton;
+    self.doneEditingButton.hidden = NO;
     
     // Show instruction to user
     self.statusLabel.text = @"Drag cards to move • Drag resize handles to resize";

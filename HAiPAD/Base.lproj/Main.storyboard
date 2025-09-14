@@ -38,7 +38,7 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="K3C-gf-Ucr">
-                                        <rect key="frame" x="201" y="15" width="54" height="30"/>
+                                        <rect key="frame" x="289" y="15" width="54" height="30"/>
                                         <state key="normal" title="Refresh"/>
                                         <connections>
                                             <action selector="refreshButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="MxT-fQ-aN3"/>
@@ -51,6 +51,15 @@
                                             <action selector="entitiesButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="jkl-mno-pqr"/>
                                         </connections>
                                     </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="done-edit-btn">
+                                        <rect key="frame" x="201" y="15" width="80" height="30"/>
+                                        <state key="normal" title="Done editing">
+                                            <color key="titleColor" red="0.0" green="0.478431373" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                        </state>
+                                        <connections>
+                                            <action selector="doneEditingButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="done-edit-action"/>
+                                        </connections>
+                                    </button>
                                 </subviews>
                                 <color key="backgroundColor" white="0.95" alpha="1" colorSpace="calibratedWhite"/>
                                 <constraints>
@@ -61,8 +70,10 @@
                                     <constraint firstAttribute="height" constant="60" id="MjK-xI-Gdn"/>
                                     <constraint firstItem="Bfi-3H-dKE" firstAttribute="leading" secondItem="K3C-gf-Ucr" secondAttribute="trailing" constant="8" id="rZj-0T-bhh"/>
                                     <constraint firstItem="K3C-gf-Ucr" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="zC8-cl-vWf"/>
-                                    <constraint firstItem="K3C-gf-Ucr" firstAttribute="leading" secondItem="abc-def-ghi" secondAttribute="trailing" constant="8" id="abc-123-xyz"/>
+                                    <constraint firstItem="K3C-gf-Ucr" firstAttribute="leading" secondItem="done-edit-btn" secondAttribute="trailing" constant="8" id="refresh-done-spacing"/>
+                                    <constraint firstItem="done-edit-btn" firstAttribute="leading" secondItem="abc-def-ghi" secondAttribute="trailing" constant="8" id="abc-123-xyz"/>
                                     <constraint firstItem="abc-def-ghi" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="def-456-uvw"/>
+                                    <constraint firstItem="done-edit-btn" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="done-edit-center"/>
                                 </constraints>
                             </view>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="UXe-Fd-dLJ">
@@ -156,6 +167,7 @@
                         <outlet property="statusLabel" destination="gx3-NM-7hc" id="Pya-rV-Bb3"/>
                         <outlet property="collectionView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
                         <outlet property="entitiesButton" destination="abc-def-ghi" id="stu-vwx-yz1"/>
+                        <outlet property="doneEditingButton" destination="done-edit-btn" id="done-edit-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
