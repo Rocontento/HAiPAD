@@ -118,14 +118,14 @@
                                            currentPoint.y - self.resizeStartPoint.y);
             
             // Calculate new grid size based on translation
-            // Assume each grid cell is approximately 100 points
-            CGFloat gridCellSize = 100.0;
+            // Use a more responsive calculation with smaller threshold
+            CGFloat gridCellSize = 80.0; // Reduced for more responsive feedback
             NSInteger newWidth = MAX(1, self.resizeStartSize.x + (NSInteger)(translation.x / gridCellSize));
             NSInteger newHeight = MAX(1, self.resizeStartSize.y + (NSInteger)(translation.y / gridCellSize));
             
-            // Limit maximum size to reasonable bounds
-            newWidth = MIN(newWidth, 3);
-            newHeight = MIN(newHeight, 3);
+            // Limit maximum size to reasonable bounds (adjust based on grid size)
+            newWidth = MIN(newWidth, 4);  // Max 4 cells wide
+            newHeight = MIN(newHeight, 3); // Max 3 cells tall
             
             CGSize newGridSize = CGSizeMake(newWidth, newHeight);
             

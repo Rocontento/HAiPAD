@@ -40,6 +40,7 @@
     self.cellSpacing = 12.0;
     self.gridInsets = UIEdgeInsetsMake(16, 16, 16, 16);
     self.showEmptySlots = YES;
+    self.showGridOverlay = NO;
     self.allowsReordering = YES;
     
     self.layoutAttributes = [NSMutableDictionary dictionary];
@@ -340,6 +341,173 @@
 - (void)setGridInsets:(UIEdgeInsets)gridInsets {
     _gridInsets = gridInsets;
     [self invalidateLayout];
+}
+
+#pragma mark - Grid Overlay Methods
+
+- (void)showGridOverlayInView:(UIView *)view {
+    if (!view || self.gridOverlayView) return; // Don't create multiple overlays
+    
+    self.showGridOverlay = YES;
+    
+    // Create overlay view
+    self.gridOverlayView = [[UIView alloc] initWithFrame:view.bounds];
+    self.gridOverlayView.backgroundColor = [UIColor clearColor];
+    self.gridOverlayView.userInteractionEnabled = NO;
+    
+    // Create grid lines
+    [self drawGridLinesInOverlay];
+    
+    // Add to view
+    [view addSubview:self.gridOverlayView];
+    
+    // Animate in
+    self.gridOverlayView.alpha = 0.0;
+    [UIView animateWithDuration:0.3 animations:^{
+        self.gridOverlayView.alpha = 1.0;
+    }];
+}
+
+- (void)hideGridOverlay {
+    if (!self.gridOverlayView) return;
+    
+    self.showGridOverlay = NO;
+    
+    [UIView animateWithDuration:0.3 animations:^{
+        self.gridOverlayView.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        [self.gridOverlayView removeFromSuperview];
+        self.gridOverlayView = nil;
+    }];
+}
+
+- (void)drawGridLinesInOverlay {
+    if (!self.gridOverlayView) return;
+    
+    // Remove existing grid lines
+    for (UIView *subview in self.gridOverlayView.subviews) {
+        [subview removeFromSuperview];
+    }
+    
+    CGFloat overlayWidth = self.gridOverlayView.bounds.size.width;
+    CGFloat overlayHeight = self.gridOverlayView.bounds.size.height;
+    
+    // Safety check for zero dimensions
+    if (overlayWidth <= 0 || overlayHeight <= 0 || self.gridColumns <= 0 || self.gridRows <= 0) {
+        return;
+    }
+    
+    // Calculate cell size for the overlay
+    CGFloat cellWidth = (overlayWidth - self.gridInsets.left - self.gridInsets.right - ((self.gridColumns - 1) * self.cellSpacing)) / self.gridColumns;
+    CGFloat cellHeight = (overlayHeight - self.gridInsets.top - self.gridInsets.bottom - ((self.gridRows - 1) * self.cellSpacing)) / self.gridRows;
+    
+    // Safety check for negative cell sizes
+    if (cellWidth <= 0 || cellHeight <= 0) {
+        return;
+    }
+    
+    // Draw vertical lines
+    for (NSInteger col = 0; col <= self.gridColumns; col++) {
+        CGFloat x = self.gridInsets.left + (col * (cellWidth + self.cellSpacing));
+        if (col == self.gridColumns) {
+            x = overlayWidth - self.gridInsets.right; // Adjust last line to account for inset
+        }
+        
+        UIView *line = [[UIView alloc] initWithFrame:CGRectMake(x, self.gridInsets.top, 1, overlayHeight - self.gridInsets.top - self.gridInsets.bottom)];
+        line.backgroundColor = [UIColor colorWithWhite:0.8 alpha:0.5];
+        [self.gridOverlayView addSubview:line];
+    }
+    
+    // Draw horizontal lines
+    for (NSInteger row = 0; row <= self.gridRows; row++) {
+        CGFloat y = self.gridInsets.top + (row * (cellHeight + self.cellSpacing));
+        if (row == self.gridRows) {
+            y = overlayHeight - self.gridInsets.bottom; // Adjust last line to account for inset
+        }
+        
+        UIView *line = [[UIView alloc] initWithFrame:CGRectMake(self.gridInsets.left, y, overlayWidth - self.gridInsets.left - self.gridInsets.right, 1)];
+        line.backgroundColor = [UIColor colorWithWhite:0.8 alpha:0.5];
+        [self.gridOverlayView addSubview:line];
+    }
+}
+
+- (void)highlightGridCells:(CGPoint)position size:(CGSize)size {
+    if (!self.gridOverlayView) return;
+    
+    // Safety checks
+    if (size.width <= 0 || size.height <= 0) return;
+    if (position.x < 0 || position.y < 0) return;
+    
+    // Remove existing highlights
+    NSArray *subviews = [self.gridOverlayView.subviews copy];
+    for (UIView *subview in subviews) {
+        if (subview.tag == 999) { // Highlight views have tag 999
+            [subview removeFromSuperview];
+        }
+    }
+    
+    // Calculate frame for highlighted area using overlay dimensions
+    CGFloat overlayWidth = self.gridOverlayView.bounds.size.width;
+    CGFloat overlayHeight = self.gridOverlayView.bounds.size.height;
+    
+    // Safety check for zero dimensions
+    if (overlayWidth <= 0 || overlayHeight <= 0 || self.gridColumns <= 0 || self.gridRows <= 0) {
+        return;
+    }
+    
+    CGFloat cellWidth = (overlayWidth - self.gridInsets.left - self.gridInsets.right - ((self.gridColumns - 1) * self.cellSpacing)) / self.gridColumns;
+    CGFloat cellHeight = (overlayHeight - self.gridInsets.top - self.gridInsets.bottom - ((self.gridRows - 1) * self.cellSpacing)) / self.gridRows;
+    
+    // Safety check for negative cell sizes
+    if (cellWidth <= 0 || cellHeight <= 0) {
+        return;
+    }
+    
+    CGFloat x = self.gridInsets.left + (position.x * (cellWidth + self.cellSpacing));
+    CGFloat y = self.gridInsets.top + (position.y * (cellHeight + self.cellSpacing));
+    CGFloat width = (size.width * cellWidth) + ((size.width - 1) * self.cellSpacing);
+    CGFloat height = (size.height * cellHeight) + ((size.height - 1) * self.cellSpacing);
+    
+    CGRect highlightFrame = CGRectMake(x, y, width, height);
+    
+    // Ensure frame is within bounds
+    if (CGRectIsEmpty(highlightFrame) || highlightFrame.size.width <= 0 || highlightFrame.size.height <= 0) {
+        return;
+    }
+    
+    // Create highlight view
+    UIView *highlight = [[UIView alloc] initWithFrame:highlightFrame];
+    highlight.backgroundColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.3];
+    highlight.layer.borderWidth = 2.0;
+    highlight.layer.borderColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.8].CGColor;
+    highlight.layer.cornerRadius = 4.0;
+    highlight.tag = 999; // Tag for easy removal
+    
+    [self.gridOverlayView addSubview:highlight];
+    
+    // Add size label only if the highlight is large enough
+    if (highlight.frame.size.width >= 60 && highlight.frame.size.height >= 30) {
+        UILabel *sizeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, MIN(highlight.frame.size.width, 80), 30)];
+        sizeLabel.text = [NSString stringWithFormat:@"%.0fx%.0f", size.width, size.height];
+        sizeLabel.textAlignment = NSTextAlignmentCenter;
+        sizeLabel.font = [UIFont boldSystemFontOfSize:14];
+        sizeLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+        sizeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.9];
+        sizeLabel.layer.cornerRadius = 4.0;
+        sizeLabel.layer.masksToBounds = YES;
+        
+        // Center the label
+        CGPoint center = CGPointMake(highlight.frame.size.width / 2, highlight.frame.size.height / 2);
+        sizeLabel.center = center;
+        
+        [highlight addSubview:sizeLabel];
+    }
+    
+    // Animate highlight
+    highlight.transform = CGAffineTransformMakeScale(0.8, 0.8);
+    [UIView animateWithDuration:0.2 animations:^{
+        highlight.transform = CGAffineTransformIdentity;
+    }];
 }
 
 @end

@@ -20,7 +20,6 @@
 @property (nonatomic, strong) NSSet *enabledEntityIds;
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
-@property (nonatomic, assign) NSInteger columnCount;
 @property (nonatomic, strong) WhiteboardGridLayout *whiteboardLayout;
 @property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
 @property (nonatomic, strong) NSMutableDictionary *entitySizes; // entity_id -> NSValue(CGSize)
@@ -127,25 +126,39 @@
     NSString *baseURL = [defaults stringForKey:@"ha_base_url"];
     NSString *accessToken = [defaults stringForKey:@"ha_access_token"];
 
-    // Load column count preference (now used for grid columns)
-    self.columnCount = [defaults integerForKey:@"ha_column_count"];
-    if (self.columnCount == 0) {
-        self.columnCount = 4; // Default to 4 columns for whiteboard
-    }
-
-    // Load grid size preference  
-    NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
-    if (gridSize == 0) {
-        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-            gridSize = 6; // Default 6x6 for iPad
+    // Load independent grid preferences with backward compatibility
+    NSInteger gridColumns = [defaults integerForKey:@"ha_grid_columns"];
+    NSInteger gridRows = [defaults integerForKey:@"ha_grid_rows"];
+    
+    // If new format doesn't exist, fall back to legacy grid size
+    if (gridColumns == 0 && gridRows == 0) {
+        NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
+        if (gridSize == 0) {
+            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                gridColumns = 6; // Default 6 columns for iPad
+                gridRows = 8;    // Default 8 rows for iPad
+            } else {
+                gridColumns = 4; // Default 4 columns for iPhone
+                gridRows = 6;    // Default 6 rows for iPhone
+            }
         } else {
-            gridSize = 4; // Default 4x4 for iPhone
+            // Legacy format - use the same value for both dimensions
+            gridColumns = gridSize;
+            gridRows = gridSize;
+        }
+    } else {
+        // Use the new independent values, but provide defaults if only one is set
+        if (gridColumns == 0) {
+            gridColumns = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
+        }
+        if (gridRows == 0) {
+            gridRows = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 8 : 6;
         }
     }
 
-    // Update grid layout
-    self.whiteboardLayout.gridColumns = self.columnCount;
-    self.whiteboardLayout.gridRows = gridSize;
+    // Update grid layout with independent dimensions
+    self.whiteboardLayout.gridColumns = gridColumns;
+    self.whiteboardLayout.gridRows = gridRows;
 
     if (baseURL && accessToken) {
         [self.homeAssistantClient connectWithBaseURL:baseURL accessToken:accessToken];
@@ -580,21 +593,41 @@
     self.whiteboardLayout = [[WhiteboardGridLayout alloc] init];
     self.whiteboardLayout.delegate = self;
 
-    // Load configuration for grid size
+    // Load configuration for grid size (independent dimensions)
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSInteger columnCount = [defaults integerForKey:@"ha_column_count"];
-    NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
     
-    if (columnCount == 0) {
-        columnCount = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
-    }
+    // Load independent grid preferences first
+    NSInteger gridColumns = [defaults integerForKey:@"ha_grid_columns"];
+    NSInteger gridRows = [defaults integerForKey:@"ha_grid_rows"];
     
-    if (gridSize == 0) {
-        gridSize = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
+    // If new format doesn't exist, fall back to legacy grid size
+    if (gridColumns == 0 && gridRows == 0) {
+        NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
+        if (gridSize == 0) {
+            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                gridColumns = 6; // Default 6 columns for iPad
+                gridRows = 8;    // Default 8 rows for iPad
+            } else {
+                gridColumns = 4; // Default 4 columns for iPhone
+                gridRows = 6;    // Default 6 rows for iPhone
+            }
+        } else {
+            // Legacy format - use the same value for both dimensions
+            gridColumns = gridSize;
+            gridRows = gridSize;
+        }
+    } else {
+        // Use the new independent values, but provide defaults if only one is set
+        if (gridColumns == 0) {
+            gridColumns = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
+        }
+        if (gridRows == 0) {
+            gridRows = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 8 : 6;
+        }
     }
 
-    self.whiteboardLayout.gridColumns = columnCount;
-    self.whiteboardLayout.gridRows = gridSize;
+    self.whiteboardLayout.gridColumns = gridColumns;
+    self.whiteboardLayout.gridRows = gridRows;
     self.whiteboardLayout.cellSpacing = 12.0;
     self.whiteboardLayout.gridInsets = UIEdgeInsetsMake(16, 16, 16, 16);
     self.whiteboardLayout.showEmptySlots = NO; // Only show during editing
@@ -915,14 +948,38 @@
     if (!self.editingMode) {
         [self setEditingMode:YES];
     }
+    
+    // Show grid overlay for visual feedback
+    [self.whiteboardLayout showGridOverlayInView:self.collectionView];
+    
+    // Find the index path for this cell to get its position
+    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+    if (indexPath) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        CGPoint gridPosition = [self getGridPositionForEntity:entityId defaultPosition:CGPointMake(0, 0)];
+        [self.whiteboardLayout highlightGridCells:gridPosition size:cell.gridSize];
+    }
 }
 
 - (void)entityCardCell:(EntityCardCell *)cell didUpdateResizing:(UIGestureRecognizer *)gesture {
     // Update layout during resizing for real-time feedback
     [self.whiteboardLayout invalidateLayout];
+    
+    // Update the grid highlight to show new size
+    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+    if (indexPath) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        CGPoint gridPosition = [self getGridPositionForEntity:entityId defaultPosition:CGPointMake(0, 0)];
+        [self.whiteboardLayout highlightGridCells:gridPosition size:cell.gridSize];
+    }
 }
 
 - (void)entityCardCell:(EntityCardCell *)cell didEndResizing:(UIGestureRecognizer *)gesture {
+    // Hide grid overlay
+    [self.whiteboardLayout hideGridOverlay];
+    
     // Final layout update
     [self.whiteboardLayout invalidateLayout];
     [self.collectionView layoutIfNeeded];
