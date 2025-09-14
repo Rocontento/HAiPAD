@@ -29,6 +29,10 @@
     popup.entity = entity;
     popup.popupType = type;
     popup.actionHandler = actionHandler;
+    
+    // Add debugging to ensure entity data is properly passed
+    NSLog(@"Creating popup with entity: %@, type: %ld", entity, (long)type);
+    
     return popup;
 }
 
@@ -111,9 +115,12 @@
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.titleLabel];
     
-    // Set title based on entity
-    NSString *friendlyName = self.entity[@"attributes"][@"friendly_name"] ?: self.entity[@"entity_id"];
+    // Set title based on entity with better error handling
+    NSString *friendlyName = self.entity[@"attributes"][@"friendly_name"] ?: self.entity[@"entity_id"] ?: @"Unknown Entity";
     self.titleLabel.text = friendlyName;
+    
+    // Add debugging
+    NSLog(@"Popup: Setting title to: %@", friendlyName);
     
     // Button container
     self.buttonContainer = [[UIView alloc] init];
@@ -179,26 +186,33 @@
     // Create info content similar to the original alert
     UILabel *infoLabel = [[UILabel alloc] init];
     infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor grayColor];
+    infoLabel.textColor = [UIColor darkTextColor]; // Changed from grayColor to darkTextColor for better visibility
     infoLabel.numberOfLines = 0;
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:infoLabel];
     
-    // Format entity information
-    NSString *entityId = self.entity[@"entity_id"];
-    NSString *state = self.entity[@"state"];
+    // Format entity information - with better error handling
+    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
+    NSString *state = self.entity[@"state"] ?: @"Unknown State";
     NSMutableString *message = [NSMutableString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
     
     NSDictionary *attributes = self.entity[@"attributes"];
-    if (attributes) {
+    if (attributes && attributes.count > 0) {
         [message appendString:@"\n\nAttributes:"];
         for (NSString *key in attributes) {
             id value = attributes[key];
-            [message appendFormat:@"\n%@: %@", key, value];
+            if (value) {
+                [message appendFormat:@"\n%@: %@", key, value];
+            }
         }
+    } else {
+        [message appendString:@"\n\nNo additional attributes available."];
     }
     
     infoLabel.text = message;
+    
+    // Add debugging - ensure the label has content
+    NSLog(@"PopupInfo: Setting up info content with text: %@", message);
     
     // Layout info label
     [NSLayoutConstraint activateConstraints:@[
@@ -319,14 +333,14 @@
 
 - (void)setupSensorInfoContent {
     // Sensor info content - enhanced version of the original
-    NSString *entityId = self.entity[@"entity_id"];
-    NSString *state = self.entity[@"state"];
+    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
+    NSString *state = self.entity[@"state"] ?: @"Unknown State";
     
-    NSMutableString *message = [NSMutableString stringWithFormat:@"Current State: %@", state];
+    NSMutableString *message = [NSMutableString stringWithFormat:@"Entity ID: %@\nCurrent State: %@", entityId, state];
     
     // Add useful attributes for sensors
     NSDictionary *attributes = self.entity[@"attributes"];
-    if (attributes) {
+    if (attributes && attributes.count > 0) {
         NSString *unit = attributes[@"unit_of_measurement"];
         NSString *deviceClass = attributes[@"device_class"];
         NSString *lastChanged = self.entity[@"last_changed"];
@@ -348,6 +362,22 @@
                 [message appendFormat:@"\nLast Updated: %@", [formatter stringFromDate:date]];
             }
         }
+        
+        // Add additional useful attributes
+        [message appendString:@"\n\nOther Attributes:"];
+        for (NSString *key in attributes) {
+            // Skip already displayed attributes
+            if (![key isEqualToString:@"unit_of_measurement"] && 
+                ![key isEqualToString:@"device_class"] && 
+                ![key isEqualToString:@"friendly_name"]) {
+                id value = attributes[key];
+                if (value) {
+                    [message appendFormat:@"\n%@: %@", key, value];
+                }
+            }
+        }
+    } else {
+        [message appendString:@"\n\nNo additional attributes available."];
     }
     
     UILabel *infoLabel = [[UILabel alloc] init];
@@ -357,6 +387,9 @@
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
     infoLabel.text = message;
     [self.contentView addSubview:infoLabel];
+    
+    // Add debugging - ensure the label has content
+    NSLog(@"PopupSensorInfo: Setting up sensor content with text: %@", message);
     
     // Layout info label
     [NSLayoutConstraint activateConstraints:@[
