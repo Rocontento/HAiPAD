@@ -298,21 +298,22 @@
         [existingOverlay removeFromSuperview];
     }
     
-    // Create background image view with better configuration
+    // Create background image view with proper scaling
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill; // This ensures the image fills the entire screen
-    backgroundImageView.clipsToBounds = YES; // This ensures the image doesn't overflow
-    backgroundImageView.tag = 999; // Tag to identify background image view
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFit; // Show entire image, may have letterboxing
+    backgroundImageView.backgroundColor = [UIColor blackColor]; // Fill letterbox areas with black
+    backgroundImageView.clipsToBounds = YES;
+    backgroundImageView.tag = 999;
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Set frame directly to fill entire screen including status bar
+    // Set frame to fill entire screen
     backgroundImageView.frame = self.view.bounds;
     backgroundImageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     
     // Ensure main content has transparent background to show image
-    self.view.backgroundColor = [UIColor clearColor];
+    self.view.backgroundColor = [UIColor blackColor]; // Changed to black to match letterbox
     if (self.collectionView) {
         self.collectionView.backgroundColor = [UIColor clearColor];
     }

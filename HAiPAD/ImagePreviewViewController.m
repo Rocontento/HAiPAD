@@ -176,6 +176,12 @@
     CGSize imageSize = self.originalImage.size;
     CGSize scrollViewSize = self.scrollView.bounds.size;
     
+    // Set the image view frame to the image's natural size
+    self.imageView.frame = CGRectMake(0, 0, imageSize.width, imageSize.height);
+    
+    // Set the scroll view's content size to the image size
+    self.scrollView.contentSize = imageSize;
+    
     // Calculate scale to fit
     CGFloat scaleX = scrollViewSize.width / imageSize.width;
     CGFloat scaleY = scrollViewSize.height / imageSize.height;
@@ -184,14 +190,7 @@
     // Set zoom scales
     self.scrollView.minimumZoomScale = minScale * 0.5; // Allow zooming out
     self.scrollView.maximumZoomScale = minScale * 4.0; // Allow zooming in
-    self.scrollView.zoomScale = minScale;
-    
-    // Set image view frame based on image size and scale
-    CGSize scaledImageSize = CGSizeMake(imageSize.width * minScale, imageSize.height * minScale);
-    self.imageView.frame = CGRectMake(0, 0, scaledImageSize.width, scaledImageSize.height);
-    
-    // Update content size
-    self.scrollView.contentSize = scaledImageSize;
+    self.scrollView.zoomScale = minScale; // Start at fit-to-screen scale
     
     // Center the image
     [self centerImageInScrollView];
