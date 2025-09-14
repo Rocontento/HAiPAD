@@ -17,6 +17,7 @@
 		3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */; };
 		3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */; };
 		3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */; };
+		F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 995AE90E56A5453ABD549115 /* CustomPopupViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,8 @@
 		3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntitySettingsViewController.m; sourceTree = "<group>"; };
 		3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EntityCardCell.h; sourceTree = "<group>"; };
 		3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntityCardCell.m; sourceTree = "<group>"; };
+		06D8AE62F95F48BBBDF5D653 /* CustomPopupViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CustomPopupViewController.h; sourceTree = "<group>"; };
+		995AE90E56A5453ABD549115 /* CustomPopupViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomPopupViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +101,8 @@
 				3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */,
 				3D0E7BA81E8B8D1000B5C9B5 /* EntitySettingsViewController.h */,
 				3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */,
+				06D8AE62F95F48BBBDF5D653 /* CustomPopupViewController.h */,
+				995AE90E56A5453ABD549115 /* CustomPopupViewController.m */,
 			);
 			name = Controllers;
 			sourceTree = "<group>";
@@ -201,6 +206,7 @@
 				3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */,
 				3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */,
 				3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */,
+				F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */,
 				3D0E7B8F1E8B8C8A00B5C9B5 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
