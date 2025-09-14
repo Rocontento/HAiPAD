@@ -59,10 +59,16 @@ La barra de navegación superior se puede ocultar completamente para maximizar e
 - Mejor separación visual entre elementos
 - Posibilidad de ocultar mediante swipe up o botón
 
-### Estado Oculto (Navegación Invisible):
-- Pantalla completa para contenido
-- Botón de menú (☰) en esquina superior derecha
-- Doble toque en cualquier parte del contenido para restaurar
+### Estado Por Defecto (Navegación Oculta):
+- **NUEVO**: La navegación ahora se inicia oculta por defecto
+- Pantalla completa para contenido desde el primer uso
+- Botón de menú (☰) visible en esquina superior derecha
+- Doble toque en cualquier parte del contenido para mostrar navegación
+
+### Estado Visible (Cuando se Activa):
+- Navegación completa con todos los botones
+- Misma funcionalidad que antes
+- Puede ocultarse nuevamente con swipe up o botón
 
 ## Beneficios
 
@@ -75,6 +81,7 @@ La barra de navegación superior se puede ocultar completamente para maximizar e
 
 - **haipad-navigation-with-borders.png**: Muestra los nuevos bordes en los botones
 - **haipad-navigation-hidden.png**: Demuestra la navegación oculta con botón de toggle
+- **haipad-navigation-default-hidden.png**: **NUEVO** - Muestra el estado por defecto (navegación oculta al iniciar)
 
 ---
 

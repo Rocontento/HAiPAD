@@ -36,6 +36,11 @@
 @property (nonatomic, strong) UIButton *toggleButton;
 @property (nonatomic, strong) NSLayoutConstraint *collectionViewTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *navigationBarHeightConstraint;
+// Customization properties
+@property (nonatomic, strong) UIColor *dashboardBackgroundColor;
+@property (nonatomic, strong) UIColor *navbarColor;
+@property (nonatomic, strong) UIImage *backgroundImage;
+@property (nonatomic, assign) NSInteger backgroundType; // 0 = color, 1 = image
 @end
 
 @implementation DashboardViewController
@@ -52,11 +57,13 @@
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
 
+
     // Initialize drag and drop state
     self.hasPendingReload = NO;
 
-    // Initialize navigation bar state
-    self.navigationBarHidden = NO;
+    // Initialize navigation bar state - hidden by default
+    self.navigationBarHidden = YES;
+
 
     // Set up whiteboard grid layout
     [self setupWhiteboardLayout];
@@ -84,6 +91,9 @@
 
     // Set up navigation bar toggle functionality
     [self setupNavigationBarToggle];
+    
+    // Initialize navigation bar to hidden state
+    [self initializeNavigationBarState];
 
     // Load saved configuration
     [self loadConfiguration];
@@ -92,6 +102,10 @@
     [self loadEntitySettings];
     [self loadEntityPositions];
     [self loadEntitySizes];
+    
+    // Load and apply customization settings
+    [self loadCustomizationSettings];
+    [self applyCustomizationSettings];
 
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -116,6 +130,10 @@
 
     // Reload layout to apply any column changes
     [self.collectionView.collectionViewLayout invalidateLayout];
+    
+    // Reload and apply customization settings in case they changed
+    [self loadCustomizationSettings];
+    [self applyCustomizationSettings];
 
     if (self.homeAssistantClient.isConnected) {
         // Update status label immediately if already connected
@@ -123,6 +141,15 @@
         self.statusLabel.textColor = [UIColor greenColor];
         
         [self.homeAssistantClient fetchStates];
+    }
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    
+    // Reapply background image after layout to ensure proper scaling
+    if (self.backgroundType == 1 && self.backgroundImage) {
+        [self applyBackgroundImage];
     }
 }
 
@@ -249,8 +276,8 @@
         [self.toggleButton.heightAnchor constraintEqualToConstant:30]
     ]];
     
-    // Initially hide the toggle button since nav bar is visible
-    self.toggleButton.hidden = YES;
+    // Initially show the toggle button since nav bar is hidden by default
+    self.toggleButton.hidden = NO;
     
     // Add double-tap gesture to collection view to show nav bar when hidden
     UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
@@ -278,6 +305,30 @@
             break;
         }
     }
+}
+
+- (void)initializeNavigationBarState {
+    // Set initial visual state based on navigationBarHidden property
+    if (self.navigationBarHidden) {
+        // Hide navigation bar immediately without animation
+        if (self.navigationBarHeightConstraint) {
+            self.navigationBarHeightConstraint.constant = 0;
+        }
+        self.navigationBarView.alpha = 0.0;
+        self.toggleButton.hidden = NO;
+        self.toggleButton.alpha = 1.0;
+    } else {
+        // Show navigation bar
+        if (self.navigationBarHeightConstraint) {
+            self.navigationBarHeightConstraint.constant = 60;
+        }
+        self.navigationBarView.alpha = 1.0;
+        self.toggleButton.hidden = YES;
+        self.toggleButton.alpha = 0.0;
+    }
+    
+    // Apply layout changes immediately
+    [self.view layoutIfNeeded];
 }
 
 - (IBAction)toggleNavigationBarTapped:(id)sender {
@@ -1175,6 +1226,7 @@
     }
 }
 
+
 #pragma mark - EmptyGridSlotViewDelegate
 
 - (void)emptyGridSlotViewWasTapped:(EmptyGridSlotView *)slotView atGridPosition:(CGPoint)gridPosition {
@@ -1229,6 +1281,7 @@
 
 - (void)entitySelectionViewControllerDidCancel:(EntitySelectionViewController *)controller {
     [controller dismissViewControllerAnimated:YES completion:nil];
+
 }
 
 @end
