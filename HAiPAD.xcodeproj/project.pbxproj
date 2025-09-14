@@ -45,6 +45,7 @@
 		4D955742EFBD8B4617AFA3A5 /* SensorView.m in Sources */ = {isa = PBXBuildFile; fileRef = 79FC9030CA4A69AAA52719D9 /* SensorView.m */; };
 		C1748F9B99A04D0B61328DF0 /* SwitchView.m in Sources */ = {isa = PBXBuildFile; fileRef = 4B5AFEE5F4864B21F6D75288 /* SwitchView.m */; };
 		C425D5A7C329ADA2AD3364D7 /* UIColor+HAiPAD.m in Sources */ = {isa = PBXBuildFile; fileRef = A31EC81C8C8BF6AF0A067B05 /* UIColor+HAiPAD.m */; };
+		4F8A2B9C5E7D1A3B6C9F1234 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E9A4B7C8D5F3A1E6B9C4567 /* CoreGraphics.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -122,6 +123,7 @@
 		4B5AFEE5F4864B21F6D75288 /* SwitchView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SwitchView.m; sourceTree = "<group>"; };
 		1B6A18AF35129CD4477728AA /* UIColor+HAiPAD.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIColor+HAiPAD.h"; sourceTree = "<group>"; };
 		A31EC81C8C8BF6AF0A067B05 /* UIColor+HAiPAD.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+HAiPAD.m"; sourceTree = "<group>"; };
+		2E9A4B7C8D5F3A1E6B9C4567 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,6 +131,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F8A2B9C5E7D1A3B6C9F1234 /* CoreGraphics.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,6 +143,7 @@
 			children = (
 				3D0E7B8C1E8B8C8A00B5C9B5 /* HAiPAD */,
 				3D0E7B8B1E8B8C8A00B5C9B5 /* Products */,
+				7A5B8C9D3E2F4A1B5C6D7E8F /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -262,6 +266,14 @@
 				3D0E7BA41E8B8CEA00B5C9B5 /* HomeAssistantClient.m */,
 			);
 			name = Models;
+			sourceTree = "<group>";
+		};
+		7A5B8C9D3E2F4A1B5C6D7E8F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2E9A4B7C8D5F3A1E6B9C4567 /* CoreGraphics.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
