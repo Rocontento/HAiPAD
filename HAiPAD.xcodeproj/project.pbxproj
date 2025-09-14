@@ -46,6 +46,8 @@
 		C1748F9B99A04D0B61328DF0 /* SwitchView.m in Sources */ = {isa = PBXBuildFile; fileRef = 4B5AFEE5F4864B21F6D75288 /* SwitchView.m */; };
 		C425D5A7C329ADA2AD3364D7 /* UIColor+HAiPAD.m in Sources */ = {isa = PBXBuildFile; fileRef = A31EC81C8C8BF6AF0A067B05 /* UIColor+HAiPAD.m */; };
 		4F8A2B9C5E7D1A3B6C9F1234 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E9A4B7C8D5F3A1E6B9C4567 /* CoreGraphics.framework */; };
+		5A9B3C8D4E6F2A7B8C1D9E5F /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F8A4B9C2D5E3A1F7B8C4567 /* UIKit.framework */; };
+		7C1D5A8E4B6F9A2C3D7E1F9B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8D2E6A9F5C1B7A3E4F8D2567 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -124,6 +126,8 @@
 		1B6A18AF35129CD4477728AA /* UIColor+HAiPAD.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIColor+HAiPAD.h"; sourceTree = "<group>"; };
 		A31EC81C8C8BF6AF0A067B05 /* UIColor+HAiPAD.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+HAiPAD.m"; sourceTree = "<group>"; };
 		2E9A4B7C8D5F3A1E6B9C4567 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		6F8A4B9C2D5E3A1F7B8C4567 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		8D2E6A9F5C1B7A3E4F8D2567 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +136,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				4F8A2B9C5E7D1A3B6C9F1234 /* CoreGraphics.framework in Frameworks */,
+				5A9B3C8D4E6F2A7B8C1D9E5F /* UIKit.framework in Frameworks */,
+				7C1D5A8E4B6F9A2C3D7E1F9B /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -272,6 +278,8 @@
 			isa = PBXGroup;
 			children = (
 				2E9A4B7C8D5F3A1E6B9C4567 /* CoreGraphics.framework */,
+				6F8A4B9C2D5E3A1F7B8C4567 /* UIKit.framework */,
+				8D2E6A9F5C1B7A3E4F8D2567 /* Foundation.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
