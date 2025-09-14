@@ -34,6 +34,7 @@
 @property (nonatomic, assign) BOOL navigationBarHidden;
 @property (nonatomic, strong) UIButton *toggleButton;
 @property (nonatomic, strong) NSLayoutConstraint *collectionViewTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *navigationBarHeightConstraint;
 @end
 
 @implementation DashboardViewController
@@ -233,11 +234,19 @@
     swipeUp.direction = UISwipeGestureRecognizerDirectionUp;
     [self.navigationBarView addGestureRecognizer:swipeUp];
     
-    // Store collection view top constraint for later modification
+    // Find and store the navigation bar height constraint and collection view top constraint
     for (NSLayoutConstraint *constraint in self.view.constraints) {
         if (constraint.firstItem == self.collectionView && 
-            constraint.firstAttribute == NSLayoutAttributeTop) {
+            constraint.firstAttribute == NSLayoutAttributeTop &&
+            constraint.secondItem == self.navigationBarView) {
             self.collectionViewTopConstraint = constraint;
+        }
+    }
+    
+    // Find the navigation bar height constraint
+    for (NSLayoutConstraint *constraint in self.navigationBarView.constraints) {
+        if (constraint.firstAttribute == NSLayoutAttributeHeight) {
+            self.navigationBarHeightConstraint = constraint;
             break;
         }
     }
@@ -248,32 +257,31 @@
     
     [UIView animateWithDuration:0.3 animations:^{
         if (self.navigationBarHidden) {
-            // Hide navigation bar
+            // Hide navigation bar by setting its height to 0
+            if (self.navigationBarHeightConstraint) {
+                self.navigationBarHeightConstraint.constant = 0;
+            }
+            
+            // Fade out the navigation bar content
             self.navigationBarView.alpha = 0.0;
-            self.navigationBarView.transform = CGAffineTransformMakeTranslation(0, -60);
             
             // Show toggle button
             self.toggleButton.hidden = NO;
             self.toggleButton.alpha = 1.0;
-            
-            // Adjust collection view top constraint to use full screen
-            if (self.collectionViewTopConstraint) {
-                self.collectionViewTopConstraint.constant = 20; // Just below status bar
-            }
         } else {
-            // Show navigation bar
+            // Show navigation bar by restoring its height
+            if (self.navigationBarHeightConstraint) {
+                self.navigationBarHeightConstraint.constant = 60;
+            }
+            
+            // Fade in the navigation bar content
             self.navigationBarView.alpha = 1.0;
-            self.navigationBarView.transform = CGAffineTransformIdentity;
             
             // Hide toggle button
             self.toggleButton.alpha = 0.0;
-            
-            // Restore collection view top constraint
-            if (self.collectionViewTopConstraint) {
-                self.collectionViewTopConstraint.constant = 80; // Below nav bar
-            }
         }
         
+        // Force layout update during animation
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         if (!self.navigationBarHidden) {
