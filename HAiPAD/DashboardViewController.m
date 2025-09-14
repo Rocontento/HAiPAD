@@ -11,6 +11,7 @@
 #import "EntitySettingsViewController.h"
 #import "EntityCardCell.h"
 #import "CustomPopupViewController.h"
+#import "EmptyGridSlotView.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
@@ -19,6 +20,9 @@
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @property (nonatomic, assign) NSInteger columnCount;
+@property (nonatomic, strong) WhiteboardGridLayout *whiteboardLayout;
+@property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
+@property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 @end
 
 @implementation DashboardViewController
@@ -30,13 +34,27 @@
     self.entities = @[];
     self.allEntities = @[];
     self.enabledEntityIds = [NSSet set];
+    self.entityPositions = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
+    
+    // Set up whiteboard grid layout
+    [self setupWhiteboardLayout];
     
     // Set up collection view
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
     self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    
+    // Register empty slot supplementary view
+    [self.collectionView registerClass:[EmptyGridSlotView class] 
+            forSupplementaryViewOfKind:@"EmptySlot" 
+                   withReuseIdentifier:@"EmptyGridSlotView"];
+    
+    // Add long press gesture for dragging cards
+    self.longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+    self.longPressGesture.minimumPressDuration = 0.5;
+    [self.collectionView addGestureRecognizer:self.longPressGesture];
     
     // Register cell from storyboard
     // The cell will be registered automatically since it's defined in the storyboard
@@ -44,8 +62,9 @@
     // Load saved configuration
     [self loadConfiguration];
     
-    // Load entity settings
+    // Load entity settings and positions
     [self loadEntitySettings];
+    [self loadEntityPositions];
     
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -78,11 +97,14 @@
     NSString *baseURL = [defaults stringForKey:@"ha_base_url"];
     NSString *accessToken = [defaults stringForKey:@"ha_access_token"];
     
-    // Load column count preference (default to 2 columns)
+    // Load column count preference (now used for grid columns)
     self.columnCount = [defaults integerForKey:@"ha_column_count"];
     if (self.columnCount == 0) {
-        self.columnCount = 2; // Default to 2 columns
+        self.columnCount = 4; // Default to 4 columns for whiteboard
     }
+    
+    // Update grid layout
+    self.whiteboardLayout.gridColumns = self.columnCount;
     
     if (baseURL && accessToken) {
         [self.homeAssistantClient connectWithBaseURL:baseURL accessToken:accessToken];
@@ -255,6 +277,19 @@
     return cell;
 }
 
+#pragma mark - UICollectionViewDataSource - Supplementary Views
+
+- (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath {
+    if ([kind isEqualToString:@"EmptySlot"]) {
+        EmptyGridSlotView *emptySlotView = [collectionView dequeueReusableSupplementaryViewOfKind:kind 
+                                                                                withReuseIdentifier:@"EmptyGridSlotView" 
+                                                                                       forIndexPath:indexPath];
+        return emptySlotView;
+    }
+    
+    return nil;
+}
+
 #pragma mark - UICollectionViewDelegate
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
@@ -299,28 +334,166 @@
     }
 }
 
-#pragma mark - UICollectionViewDelegateFlowLayout
+#pragma mark - Whiteboard Grid Layout Setup and Management
 
-- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    // Calculate cell size based on user's column preference
-    CGFloat padding = 16.0;
-    CGFloat interItemSpacing = 12.0;
-    CGFloat availableWidth = collectionView.bounds.size.width - (2 * padding) - ((self.columnCount - 1) * interItemSpacing);
-    CGFloat cellWidth = availableWidth / self.columnCount;
+- (void)setupWhiteboardLayout {
+    self.whiteboardLayout = [[WhiteboardGridLayout alloc] init];
+    self.whiteboardLayout.delegate = self;
     
-    return CGSizeMake(cellWidth, 100.0);
+    // Configure grid based on device
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        self.whiteboardLayout.gridColumns = 4;
+        self.whiteboardLayout.gridRows = 6;
+    } else {
+        self.whiteboardLayout.gridColumns = 2;
+        self.whiteboardLayout.gridRows = 8;
+    }
+    
+    self.whiteboardLayout.cellSpacing = 12.0;
+    self.whiteboardLayout.gridInsets = UIEdgeInsetsMake(16, 16, 16, 16);
+    self.whiteboardLayout.showEmptySlots = YES;
+    self.whiteboardLayout.allowsReordering = YES;
+    
+    // Apply the layout to collection view
+    self.collectionView.collectionViewLayout = self.whiteboardLayout;
 }
 
-- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
-    return UIEdgeInsetsMake(16, 16, 16, 16);
+- (void)loadEntityPositions {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSDictionary *savedPositions = [defaults dictionaryForKey:@"ha_entity_positions"];
+    
+    if (savedPositions) {
+        self.entityPositions = [savedPositions mutableCopy];
+    } else {
+        self.entityPositions = [NSMutableDictionary dictionary];
+    }
 }
 
-- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section {
-    return 12.0;
+- (void)saveEntityPositions {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:self.entityPositions forKey:@"ha_entity_positions"];
+    [defaults synchronize];
 }
 
-- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
-    return 12.0;
+- (CGPoint)getGridPositionForEntity:(NSString *)entityId defaultPosition:(CGPoint)defaultPosition {
+    NSString *positionString = self.entityPositions[entityId];
+    if (positionString) {
+        CGPoint position = CGPointFromString(positionString);
+        return position;
+    }
+    
+    // If no saved position, store the default position
+    [self setGridPosition:defaultPosition forEntity:entityId];
+    return defaultPosition;
+}
+
+- (void)setGridPosition:(CGPoint)position forEntity:(NSString *)entityId {
+    NSString *positionString = NSStringFromCGPoint(position);
+    self.entityPositions[entityId] = positionString;
+    [self saveEntityPositions];
+}
+
+#pragma mark - WhiteboardGridLayoutDelegate
+
+- (CGPoint)gridPositionForItemAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.item < self.entities.count) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        
+        // Calculate auto-placement position as fallback
+        NSInteger autoRow = indexPath.item / self.whiteboardLayout.gridColumns;
+        NSInteger autoCol = indexPath.item % self.whiteboardLayout.gridColumns;
+        CGPoint autoPosition = CGPointMake(autoCol, autoRow);
+        
+        return [self getGridPositionForEntity:entityId defaultPosition:autoPosition];
+    }
+    
+    return CGPointMake(0, 0);
+}
+
+- (CGSize)gridSizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    // All cards are 1x1 for now, but this allows for future expansion
+    return CGSizeMake(1, 1);
+}
+
+- (void)didMoveItemAtIndexPath:(NSIndexPath *)indexPath toGridPosition:(CGPoint)gridPosition {
+    if (indexPath.item < self.entities.count) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        [self setGridPosition:gridPosition forEntity:entityId];
+    }
+}
+
+#pragma mark - Drag and Drop Handling
+
+- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
+    CGPoint location = [gesture locationInView:self.collectionView];
+    NSIndexPath *indexPath = [self.collectionView indexPathForItemAtPoint:location];
+    
+    switch (gesture.state) {
+        case UIGestureRecognizerStateBegan: {
+            if (indexPath) {
+                [self beginDragForItemAtIndexPath:indexPath];
+            }
+            break;
+        }
+        case UIGestureRecognizerStateChanged: {
+            [self updateDragAtLocation:location];
+            break;
+        }
+        case UIGestureRecognizerStateEnded:
+        case UIGestureRecognizerStateCancelled: {
+            [self endDragAtLocation:location];
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+- (void)beginDragForItemAtIndexPath:(NSIndexPath *)indexPath {
+    UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+    if (cell) {
+        // Add visual feedback
+        [UIView animateWithDuration:0.2 animations:^{
+            cell.transform = CGAffineTransformMakeScale(1.1, 1.1);
+            cell.alpha = 0.8;
+        }];
+    }
+}
+
+- (void)updateDragAtLocation:(CGPoint)location {
+    // Visual feedback during drag - could highlight target grid position
+    CGPoint gridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
+    
+    // Provide visual feedback here if needed
+    // For now, just ensure the dragged cell follows the gesture
+}
+
+- (void)endDragAtLocation:(CGPoint)location {
+    NSIndexPath *sourceIndexPath = [self.collectionView indexPathForItemAtPoint:location];
+    
+    if (sourceIndexPath) {
+        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:sourceIndexPath];
+        
+        // Calculate new grid position
+        CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
+        
+        // Check if position is valid
+        if ([self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1)]) {
+            // Update the position
+            [self didMoveItemAtIndexPath:sourceIndexPath toGridPosition:newGridPosition];
+            
+            // Reload layout to apply new position
+            [self.collectionView.collectionViewLayout invalidateLayout];
+        }
+        
+        // Reset visual state
+        [UIView animateWithDuration:0.2 animations:^{
+            cell.transform = CGAffineTransformIdentity;
+            cell.alpha = 1.0;
+        }];
+    }
 }
 
 #pragma mark - Action Methods
