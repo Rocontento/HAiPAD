@@ -29,17 +29,25 @@
     popup.entity = entity;
     popup.popupType = type;
     popup.actionHandler = actionHandler;
+    
+    // Add debugging to ensure entity data is properly passed
+    NSLog(@"Creating popup with entity: %@, type: %ld", entity, (long)type);
+    
     return popup;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    NSLog(@"Popup: viewDidLoad called");
+    
     self.actionButtons = [NSMutableArray array];
     [self setupBackgroundOverlay];
     [self setupPopupContainer];
     [self setupContentBasedOnType];
     [self layoutPopupContent];
+    
+    NSLog(@"Popup: viewDidLoad completed");
 }
 
 - (void)setupBackgroundOverlay {
@@ -70,6 +78,10 @@
     self.popupContainer.layer.cornerRadius = 16.0;
     self.popupContainer.layer.masksToBounds = NO;
     
+    // Add debug border to make popup visible
+    self.popupContainer.layer.borderWidth = 2.0;
+    self.popupContainer.layer.borderColor = [UIColor redColor].CGColor;
+    
     // Shadow for iOS 9.3.5 compatibility
     self.popupContainer.layer.shadowColor = [UIColor blackColor].CGColor;
     self.popupContainer.layer.shadowOffset = CGSizeMake(0, 8);
@@ -79,7 +91,7 @@
     self.popupContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.popupContainer];
     
-    // Center the popup and set max dimensions
+    // Center the popup and set dimensions with minimum height
     [NSLayoutConstraint activateConstraints:@[
         [self.popupContainer.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.popupContainer.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
@@ -87,36 +99,38 @@
         [self.popupContainer.widthAnchor constraintGreaterThanOrEqualToConstant:280.0],
         [self.popupContainer.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:20.0],
         [self.popupContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-20.0],
-        [self.popupContainer.heightAnchor constraintLessThanOrEqualToConstant:500.0]
+        [self.popupContainer.heightAnchor constraintLessThanOrEqualToConstant:500.0],
+        [self.popupContainer.heightAnchor constraintGreaterThanOrEqualToConstant:200.0] // Ensure minimum height
     ]];
 }
 
 - (void)setupContentBasedOnType {
-    // Setup scroll view for content
-    self.contentScrollView = [[UIScrollView alloc] init];
-    self.contentScrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.popupContainer addSubview:self.contentScrollView];
-    
-    // Content view inside scroll view
+    // Content view directly in popup container (without scroll view for now)
     self.contentView = [[UIView alloc] init];
+    self.contentView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0]; // Light gray background for debugging
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentScrollView addSubview:self.contentView];
+    [self.popupContainer addSubview:self.contentView];
     
     // Title label
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
-    self.titleLabel.textColor = [UIColor darkTextColor];
+    self.titleLabel.font = [UIFont boldSystemFontOfSize:20]; // Use boldSystemFont for iOS 9.3.5 compatibility
+    self.titleLabel.textColor = [UIColor blackColor];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.numberOfLines = 0;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.titleLabel];
     
-    // Set title based on entity
-    NSString *friendlyName = self.entity[@"attributes"][@"friendly_name"] ?: self.entity[@"entity_id"];
+    // Set title based on entity with better error handling
+    NSString *friendlyName = self.entity[@"attributes"][@"friendly_name"] ?: self.entity[@"entity_id"] ?: @"Unknown Entity";
     self.titleLabel.text = friendlyName;
+    
+    // Add debugging
+    NSLog(@"Popup: Setting title to: %@", friendlyName);
+    NSLog(@"Popup: Entity data: %@", self.entity);
     
     // Button container
     self.buttonContainer = [[UIView alloc] init];
+    self.buttonContainer.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0]; // Debug background for buttons
     self.buttonContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.buttonContainer];
     
@@ -141,24 +155,15 @@
 }
 
 - (void)layoutPopupContent {
-    // Layout scroll view
+    // Layout content view directly in popup container
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentScrollView.topAnchor constraintEqualToAnchor:self.popupContainer.topAnchor constant:20.0],
-        [self.contentScrollView.leadingAnchor constraintEqualToAnchor:self.popupContainer.leadingAnchor constant:20.0],
-        [self.contentScrollView.trailingAnchor constraintEqualToAnchor:self.popupContainer.trailingAnchor constant:-20.0],
-        [self.contentScrollView.bottomAnchor constraintEqualToAnchor:self.popupContainer.bottomAnchor constant:-20.0]
+        [self.contentView.topAnchor constraintEqualToAnchor:self.popupContainer.topAnchor constant:20.0],
+        [self.contentView.leadingAnchor constraintEqualToAnchor:self.popupContainer.leadingAnchor constant:20.0],
+        [self.contentView.trailingAnchor constraintEqualToAnchor:self.popupContainer.trailingAnchor constant:-20.0],
+        [self.contentView.bottomAnchor constraintEqualToAnchor:self.popupContainer.bottomAnchor constant:-20.0]
     ]];
     
-    // Layout content view
-    [NSLayoutConstraint activateConstraints:@[
-        [self.contentView.topAnchor constraintEqualToAnchor:self.contentScrollView.topAnchor],
-        [self.contentView.leadingAnchor constraintEqualToAnchor:self.contentScrollView.leadingAnchor],
-        [self.contentView.trailingAnchor constraintEqualToAnchor:self.contentScrollView.trailingAnchor],
-        [self.contentView.bottomAnchor constraintEqualToAnchor:self.contentScrollView.bottomAnchor],
-        [self.contentView.widthAnchor constraintEqualToAnchor:self.contentScrollView.widthAnchor]
-    ]];
-    
-    // Layout title
+    // Layout title with proper constraints
     [NSLayoutConstraint activateConstraints:@[
         [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -171,6 +176,8 @@
         [self.buttonContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.buttonContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]
     ]];
+    
+    NSLog(@"Popup: Layout constraints applied (simplified)");
 }
 
 #pragma mark - Content Setup Methods
@@ -179,28 +186,39 @@
     // Create info content similar to the original alert
     UILabel *infoLabel = [[UILabel alloc] init];
     infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor grayColor];
+    infoLabel.textColor = [UIColor blackColor]; // Use explicit black color for iOS 9.3.5 compatibility
+    infoLabel.backgroundColor = [UIColor colorWithWhite:0.98 alpha:1.0]; // Light background to help debugging
     infoLabel.numberOfLines = 0;
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:infoLabel];
     
-    // Format entity information
-    NSString *entityId = self.entity[@"entity_id"];
-    NSString *state = self.entity[@"state"];
+    // Format entity information - with better error handling
+    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
+    NSString *state = self.entity[@"state"] ?: @"Unknown State";
     NSMutableString *message = [NSMutableString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
     
     NSDictionary *attributes = self.entity[@"attributes"];
-    if (attributes) {
+    if (attributes && attributes.count > 0) {
         [message appendString:@"\n\nAttributes:"];
         for (NSString *key in attributes) {
             id value = attributes[key];
-            [message appendFormat:@"\n%@: %@", key, value];
+            if (value) {
+                [message appendFormat:@"\n%@: %@", key, value];
+            }
         }
+    } else {
+        [message appendString:@"\n\nNo additional attributes available."];
     }
     
     infoLabel.text = message;
     
-    // Layout info label
+    // Add debugging - ensure the label has content
+    NSLog(@"PopupInfo: Setting up info content with text: %@", message);
+    NSLog(@"PopupInfo: Title text: '%@'", self.titleLabel.text);
+    NSLog(@"PopupInfo: InfoLabel textColor: %@", infoLabel.textColor);
+    NSLog(@"PopupInfo: InfoLabel font: %@", infoLabel.font);
+    
+    // Layout info label - simplified constraints
     [NSLayoutConstraint activateConstraints:@[
         [infoLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
         [infoLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -210,6 +228,8 @@
     
     // Add OK button
     [self addActionButton:@"OK" style:CustomPopupButtonStylePrimary action:@"dismiss"];
+    
+    NSLog(@"PopupInfo: Content setup completed");
 }
 
 - (void)setupClimateControlContent {
@@ -222,7 +242,7 @@
     // Create temperature display
     UILabel *tempLabel = [[UILabel alloc] init];
     tempLabel.font = [UIFont systemFontOfSize:16];
-    tempLabel.textColor = [UIColor darkTextColor];
+    tempLabel.textColor = [UIColor blackColor];
     tempLabel.numberOfLines = 0;
     tempLabel.textAlignment = NSTextAlignmentCenter;
     tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -270,7 +290,7 @@
     
     UILabel *stateLabel = [[UILabel alloc] init];
     stateLabel.font = [UIFont systemFontOfSize:16];
-    stateLabel.textColor = [UIColor darkTextColor];
+    stateLabel.textColor = [UIColor blackColor];
     stateLabel.textAlignment = NSTextAlignmentCenter;
     stateLabel.text = [NSString stringWithFormat:@"Current state: %@", state];
     stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -297,7 +317,7 @@
     
     UILabel *stateLabel = [[UILabel alloc] init];
     stateLabel.font = [UIFont systemFontOfSize:16];
-    stateLabel.textColor = [UIColor darkTextColor];
+    stateLabel.textColor = [UIColor blackColor];
     stateLabel.textAlignment = NSTextAlignmentCenter;
     stateLabel.text = [NSString stringWithFormat:@"Current state: %@", state];
     stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -319,14 +339,14 @@
 
 - (void)setupSensorInfoContent {
     // Sensor info content - enhanced version of the original
-    NSString *entityId = self.entity[@"entity_id"];
-    NSString *state = self.entity[@"state"];
+    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
+    NSString *state = self.entity[@"state"] ?: @"Unknown State";
     
-    NSMutableString *message = [NSMutableString stringWithFormat:@"Current State: %@", state];
+    NSMutableString *message = [NSMutableString stringWithFormat:@"Entity ID: %@\nCurrent State: %@", entityId, state];
     
     // Add useful attributes for sensors
     NSDictionary *attributes = self.entity[@"attributes"];
-    if (attributes) {
+    if (attributes && attributes.count > 0) {
         NSString *unit = attributes[@"unit_of_measurement"];
         NSString *deviceClass = attributes[@"device_class"];
         NSString *lastChanged = self.entity[@"last_changed"];
@@ -348,15 +368,34 @@
                 [message appendFormat:@"\nLast Updated: %@", [formatter stringFromDate:date]];
             }
         }
+        
+        // Add additional useful attributes
+        [message appendString:@"\n\nOther Attributes:"];
+        for (NSString *key in attributes) {
+            // Skip already displayed attributes
+            if (![key isEqualToString:@"unit_of_measurement"] && 
+                ![key isEqualToString:@"device_class"] && 
+                ![key isEqualToString:@"friendly_name"]) {
+                id value = attributes[key];
+                if (value) {
+                    [message appendFormat:@"\n%@: %@", key, value];
+                }
+            }
+        }
+    } else {
+        [message appendString:@"\n\nNo additional attributes available."];
     }
     
     UILabel *infoLabel = [[UILabel alloc] init];
     infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor darkTextColor];
+    infoLabel.textColor = [UIColor blackColor];
     infoLabel.numberOfLines = 0;
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
     infoLabel.text = message;
     [self.contentView addSubview:infoLabel];
+    
+    // Add debugging - ensure the label has content
+    NSLog(@"PopupSensorInfo: Setting up sensor content with text: %@", message);
     
     // Layout info label
     [NSLayoutConstraint activateConstraints:@[
@@ -375,7 +414,7 @@
 - (void)addActionButton:(NSString *)title style:(CustomPopupButtonStyle)style action:(NSString *)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     [button setTitle:title forState:UIControlStateNormal];
-    button.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    button.titleLabel.font = [UIFont boldSystemFontOfSize:16]; // Use boldSystemFont for iOS 9.3.5 compatibility
     
     // Style button based on type
     switch (style) {
@@ -385,7 +424,7 @@
             break;
         case CustomPopupButtonStyleSecondary:
             button.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-            [button setTitleColor:[UIColor darkTextColor] forState:UIControlStateNormal];
+            [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
             break;
         case CustomPopupButtonStyleCancel:
             button.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0];
@@ -480,6 +519,8 @@
 #pragma mark - Presentation/Dismissal
 
 - (void)presentFromViewController:(UIViewController *)viewController animated:(BOOL)animated {
+    NSLog(@"Popup: presentFromViewController called");
+    
     // Present as overlay
     self.modalPresentationStyle = UIModalPresentationOverCurrentContext;
     self.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
@@ -492,12 +533,32 @@
     }
     
     [viewController presentViewController:self animated:NO completion:^{
+        NSLog(@"Popup: Presentation completed, starting animation");
+        
         if (animated) {
             [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.8 initialSpringVelocity:0.0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                 self.popupContainer.alpha = 1.0;
                 self.popupContainer.transform = CGAffineTransformIdentity;
                 self.backgroundOverlay.alpha = 1.0;
-            } completion:nil];
+            } completion:^(BOOL finished) {
+                NSLog(@"Popup: Animation completed");
+                
+                // Force layout after animation
+                [self.view layoutIfNeeded];
+                
+                // Debug current frame sizes
+                NSLog(@"Popup: Final popup container frame: %@", NSStringFromCGRect(self.popupContainer.frame));
+                NSLog(@"Popup: Final content view frame: %@", NSStringFromCGRect(self.contentView.frame));
+                NSLog(@"Popup: Final title label frame: %@", NSStringFromCGRect(self.titleLabel.frame));
+            }];
+        } else {
+            // Force layout for non-animated case
+            [self.view layoutIfNeeded];
+            
+            // Debug current frame sizes
+            NSLog(@"Popup: Final popup container frame: %@", NSStringFromCGRect(self.popupContainer.frame));
+            NSLog(@"Popup: Final content view frame: %@", NSStringFromCGRect(self.contentView.frame));
+            NSLog(@"Popup: Final title label frame: %@", NSStringFromCGRect(self.titleLabel.frame));
         }
     }];
 }

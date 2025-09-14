@@ -610,11 +610,16 @@
     NSInteger index = sender.tag;
     if (index < self.entities.count) {
         NSDictionary *entity = self.entities[index];
-
+        
+        // Add debugging to see what entity data we have
+        NSLog(@"Info button tapped for entity: %@", entity);
+        
         CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
                                                                                  type:CustomPopupTypeInfo
                                                                          actionHandler:nil];
         [popup presentFromViewController:self animated:YES];
+    } else {
+        NSLog(@"Info button tapped with invalid index: %ld (total entities: %lu)", (long)index, (unsigned long)self.entities.count);
     }
 }
 
@@ -695,6 +700,9 @@
 }
 
 - (void)showSensorInfoForEntity:(NSDictionary *)entity {
+    // Add debugging to see what entity data we have
+    NSLog(@"Showing sensor info for entity: %@", entity);
+    
     CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
                                                                              type:CustomPopupTypeSensorInfo
                                                                      actionHandler:nil];
