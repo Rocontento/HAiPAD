@@ -63,9 +63,9 @@
             forSupplementaryViewOfKind:@"EmptySlot"
                    withReuseIdentifier:@"EmptyGridSlotView"];
 
-    // Add long press gesture for dragging cards
+    // Add long press gesture for entering edit mode or dragging cards
     self.longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
-    self.longPressGesture.minimumPressDuration = 0.5;
+    self.longPressGesture.minimumPressDuration = 0.8; // Slightly longer for edit mode activation
     [self.collectionView addGestureRecognizer:self.longPressGesture];
 
     // Register cell from storyboard
@@ -86,9 +86,9 @@
     [self.collectionView addSubview:self.refreshControl];
     [self.collectionView sendSubviewToBack:self.refreshControl];
     
-    // Add edit button to navigation bar
-    self.editBarButton = [[UIBarButtonItem alloc] initWithTitle:@"Edit" style:UIBarButtonItemStylePlain target:self action:@selector(editButtonTapped:)];
-    self.navigationItem.rightBarButtonItem = self.editBarButton;
+    // Don't add edit button to navigation bar initially - will be shown when in edit mode
+    // Edit mode is entered via long press gesture
+    self.editBarButton = [[UIBarButtonItem alloc] initWithTitle:@"Done editing" style:UIBarButtonItemStyleDone target:self action:@selector(editButtonTapped:)];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -181,18 +181,12 @@
 }
 
 - (IBAction)editButtonTapped:(id)sender {
-    // Toggle edit mode
-    [self setEditingMode:!self.editingMode];
-    
-    // Update button title
+    // This only exits edit mode now - entry is via long press
     if (self.editingMode) {
-        self.editBarButton.title = @"Done";
+        [self setEditingMode:NO];
         
-        // Show instruction to user
-        self.statusLabel.text = @"Drag cards to move • Drag resize handles to resize";
-        self.statusLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
-    } else {
-        self.editBarButton.title = @"Edit";
+        // Hide the Done button
+        self.navigationItem.rightBarButtonItem = nil;
         
         // Restore normal status
         self.statusLabel.text = @"Connected";
@@ -543,18 +537,30 @@
 
     switch (gesture.state) {
         case UIGestureRecognizerStateBegan: {
-            if (indexPath) {
+            if (!self.editingMode) {
+                // Enter edit mode on long press
+                [self enterEditMode];
+                
+                // Provide haptic feedback if available (iOS 9.3.5 doesn't have haptic feedback)
+                // Instead, we'll provide visual feedback
+                [self flashEditModeIndicator];
+            } else if (indexPath) {
+                // Already in edit mode, start dragging the card
                 [self beginDragForItemAtIndexPath:indexPath atLocation:location];
             }
             break;
         }
         case UIGestureRecognizerStateChanged: {
-            [self updateDragAtLocation:location];
+            if (self.editingMode && self.draggedIndexPath) {
+                [self updateDragAtLocation:location];
+            }
             break;
         }
         case UIGestureRecognizerStateEnded:
         case UIGestureRecognizerStateCancelled: {
-            [self endDragAtLocation:location];
+            if (self.editingMode && self.draggedIndexPath) {
+                [self endDragAtLocation:location];
+            }
             break;
         }
         default:
@@ -563,8 +569,10 @@
 }
 
 - (void)beginDragForItemAtIndexPath:(NSIndexPath *)indexPath atLocation:(CGPoint)location {
-    // Enter editing mode
-    [self setEditingMode:YES];
+    // Only drag if we're already in editing mode
+    if (!self.editingMode) {
+        return;
+    }
 
     // Store the dragged item
     self.draggedIndexPath = indexPath;
@@ -687,8 +695,7 @@
     self.draggedIndexPath = nil;
     self.draggedCellSnapshot = nil;
 
-    // Exit editing mode
-    [self setEditingMode:NO];
+    // Don't exit editing mode automatically - user needs to tap "Done editing"
 }
 
 - (void)setEditingMode:(BOOL)editingMode {
@@ -712,6 +719,32 @@
 
     // Optional: Add visual feedback for editing mode
     // Could change collection view background color slightly, etc.
+}
+
+#pragma mark - Edit Mode Management
+
+- (void)enterEditMode {
+    [self setEditingMode:YES];
+    
+    // Show the Done editing button
+    self.navigationItem.rightBarButtonItem = self.editBarButton;
+    
+    // Show instruction to user
+    self.statusLabel.text = @"Drag cards to move • Drag resize handles to resize";
+    self.statusLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+}
+
+- (void)flashEditModeIndicator {
+    // Provide visual feedback that edit mode was entered
+    UIView *flashView = [[UIView alloc] initWithFrame:self.collectionView.bounds];
+    flashView.backgroundColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.1];
+    [self.collectionView addSubview:flashView];
+    
+    [UIView animateWithDuration:0.3 animations:^{
+        flashView.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        [flashView removeFromSuperview];
+    }];
 }
 
 #pragma mark - Action Methods
