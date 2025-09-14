@@ -10,6 +10,7 @@
 #import "ConfigurationViewController.h"
 #import "EntitySettingsViewController.h"
 #import "EntityCardCell.h"
+#import "WhiteboardLayout.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
@@ -18,6 +19,12 @@
 @property (nonatomic, strong) HomeAssistantClient *homeAssistantClient;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @property (nonatomic, assign) NSInteger columnCount;
+@property (nonatomic, strong) WhiteboardLayout *whiteboardLayout;
+@property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
+@property (nonatomic, strong) UIPanGestureRecognizer *panGesture;
+@property (nonatomic, strong) NSIndexPath *draggingIndexPath;
+@property (nonatomic, assign) CGPoint initialDragOffset;
+@property (nonatomic, strong) UIView *draggingView;
 @end
 
 @implementation DashboardViewController
@@ -32,19 +39,34 @@
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
     
-    // Set up collection view
+    // Set up whiteboard layout
+    self.whiteboardLayout = [[WhiteboardLayout alloc] init];
+    self.whiteboardLayout.gridSize = CGSizeMake(160, 120);
+    self.whiteboardLayout.gridSpacing = 20;
+    
+    // Set up collection view with whiteboard layout
+    self.collectionView.collectionViewLayout = self.whiteboardLayout;
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
     self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     
-    // Register cell from storyboard
-    // The cell will be registered automatically since it's defined in the storyboard
+    // Enable scrolling in both directions for whiteboard
+    self.collectionView.scrollEnabled = YES;
+    self.collectionView.bounces = YES;
+    self.collectionView.alwaysBounceVertical = YES;
+    self.collectionView.alwaysBounceHorizontal = YES;
+    
+    // Add gesture recognizers for drag and drop
+    [self setupGestureRecognizers];
     
     // Load saved configuration
     [self loadConfiguration];
     
     // Load entity settings
     [self loadEntitySettings];
+    
+    // Load saved card positions
+    [self loadCardPositions];
     
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -108,6 +130,211 @@
     if (self.allEntities.count > 0) {
         [self filterEntitiesBasedOnSettings];
     }
+}
+
+#pragma mark - Gesture Recognizers
+
+- (void)setupGestureRecognizers {
+    // Long press gesture to start dragging
+    self.longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+    self.longPressGesture.minimumPressDuration = 0.5;
+    [self.collectionView addGestureRecognizer:self.longPressGesture];
+    
+    // Pan gesture for dragging
+    self.panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+    self.panGesture.enabled = NO; // Initially disabled
+    [self.collectionView addGestureRecognizer:self.panGesture];
+}
+
+- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
+    CGPoint location = [gesture locationInView:self.collectionView];
+    
+    switch (gesture.state) {
+        case UIGestureRecognizerStateBegan: {
+            NSIndexPath *indexPath = [self.collectionView indexPathForItemAtPoint:location];
+            if (indexPath) {
+                [self startDraggingItemAtIndexPath:indexPath withLocation:location];
+            }
+            break;
+        }
+        case UIGestureRecognizerStateEnded:
+        case UIGestureRecognizerStateCancelled:
+            [self endDragging];
+            break;
+        default:
+            break;
+    }
+}
+
+- (void)handlePan:(UIPanGestureRecognizer *)gesture {
+    if (!self.draggingIndexPath) return;
+    
+    CGPoint location = [gesture locationInView:self.collectionView];
+    
+    switch (gesture.state) {
+        case UIGestureRecognizerStateChanged:
+            [self updateDraggingViewPosition:location];
+            break;
+        case UIGestureRecognizerStateEnded:
+            [self finishDragging:location];
+            break;
+        case UIGestureRecognizerStateCancelled:
+            [self cancelDragging];
+            break;
+        default:
+            break;
+    }
+}
+
+#pragma mark - Drag and Drop Implementation
+
+- (void)startDraggingItemAtIndexPath:(NSIndexPath *)indexPath withLocation:(CGPoint)location {
+    UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+    if (!cell) return;
+    
+    self.draggingIndexPath = indexPath;
+    
+    // Create a snapshot view for dragging
+    self.draggingView = [self createDraggingViewFromCell:cell];
+    [self.collectionView addSubview:self.draggingView];
+    
+    // Calculate offset from touch to cell center
+    CGPoint cellCenter = cell.center;
+    self.initialDragOffset = CGPointMake(location.x - cellCenter.x, location.y - cellCenter.y);
+    
+    // Position the dragging view
+    self.draggingView.center = location;
+    
+    // Hide the original cell
+    cell.hidden = YES;
+    
+    // Add visual feedback
+    [UIView animateWithDuration:0.2 animations:^{
+        self.draggingView.transform = CGAffineTransformMakeScale(1.1, 1.1);
+        self.draggingView.alpha = 0.9;
+    }];
+    
+    // Enable pan gesture
+    self.panGesture.enabled = YES;
+}
+
+- (UIView *)createDraggingViewFromCell:(UICollectionViewCell *)cell {
+    // Create a snapshot of the cell
+    UIView *snapshot = [cell snapshotViewAfterScreenUpdates:NO];
+    snapshot.frame = cell.frame;
+    
+    // Add shadow for visual feedback
+    snapshot.layer.shadowColor = [UIColor blackColor].CGColor;
+    snapshot.layer.shadowOffset = CGSizeMake(0, 5);
+    snapshot.layer.shadowOpacity = 0.3;
+    snapshot.layer.shadowRadius = 10;
+    
+    return snapshot;
+}
+
+- (void)updateDraggingViewPosition:(CGPoint)location {
+    if (!self.draggingView) return;
+    
+    // Update dragging view position
+    self.draggingView.center = CGPointMake(location.x - self.initialDragOffset.x, 
+                                          location.y - self.initialDragOffset.y);
+    
+    // Visual feedback for valid drop zones could be added here
+    // For now, just ensure the view follows the touch
+}
+
+- (void)finishDragging:(CGPoint)location {
+    if (!self.draggingIndexPath || !self.draggingView) return;
+    
+    // Calculate final position (minus the offset)
+    CGPoint finalPosition = CGPointMake(location.x - self.initialDragOffset.x, 
+                                       location.y - self.initialDragOffset.y);
+    
+    // Snap to grid
+    CGPoint snappedPosition = [self.whiteboardLayout snapToGrid:finalPosition];
+    
+    // Update the layout with new position
+    [self.whiteboardLayout setPosition:snappedPosition forItemAtIndexPath:self.draggingIndexPath];
+    
+    // Save the new position
+    [self saveCardPositions];
+    
+    // Animate to final position
+    [UIView animateWithDuration:0.3 animations:^{
+        self.draggingView.center = CGPointMake(snappedPosition.x + self.whiteboardLayout.gridSize.width / 2,
+                                              snappedPosition.y + self.whiteboardLayout.gridSize.height / 2);
+        self.draggingView.transform = CGAffineTransformIdentity;
+        self.draggingView.alpha = 1.0;
+    } completion:^(BOOL finished) {
+        [self endDragging];
+    }];
+}
+
+- (void)cancelDragging {
+    // Return to original position
+    if (self.draggingIndexPath && self.draggingView) {
+        UICollectionViewLayoutAttributes *attributes = [self.whiteboardLayout layoutAttributesForItemAtIndexPath:self.draggingIndexPath];
+        
+        [UIView animateWithDuration:0.3 animations:^{
+            self.draggingView.center = CGPointMake(attributes.center.x, attributes.center.y);
+            self.draggingView.transform = CGAffineTransformIdentity;
+            self.draggingView.alpha = 1.0;
+        } completion:^(BOOL finished) {
+            [self endDragging];
+        }];
+    }
+}
+
+- (void)endDragging {
+    // Clean up dragging state
+    if (self.draggingIndexPath) {
+        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:self.draggingIndexPath];
+        cell.hidden = NO;
+    }
+    
+    [self.draggingView removeFromSuperview];
+    self.draggingView = nil;
+    self.draggingIndexPath = nil;
+    self.panGesture.enabled = NO;
+    
+    // Reload layout to ensure everything is positioned correctly
+    [self.collectionView.collectionViewLayout invalidateLayout];
+}
+
+#pragma mark - Position Persistence
+
+- (void)loadCardPositions {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSDictionary *savedPositions = [defaults dictionaryForKey:@"ha_card_positions"];
+    
+    if (savedPositions) {
+        NSMutableDictionary *positions = [NSMutableDictionary dictionary];
+        
+        for (NSString *key in savedPositions) {
+            NSArray *pointArray = savedPositions[key];
+            if (pointArray.count == 2) {
+                CGFloat x = [pointArray[0] floatValue];
+                CGFloat y = [pointArray[1] floatValue];
+                positions[key] = [NSValue valueWithCGPoint:CGPointMake(x, y)];
+            }
+        }
+        
+        self.whiteboardLayout.itemPositions = positions;
+    }
+}
+
+- (void)saveCardPositions {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSMutableDictionary *positionsToSave = [NSMutableDictionary dictionary];
+    
+    for (NSString *key in self.whiteboardLayout.itemPositions) {
+        NSValue *positionValue = self.whiteboardLayout.itemPositions[key];
+        CGPoint position = [positionValue CGPointValue];
+        positionsToSave[key] = @[@(position.x), @(position.y)];
+    }
+    
+    [defaults setObject:positionsToSave forKey:@"ha_card_positions"];
+    [defaults synchronize];
 }
 
 #pragma mark - IBActions
@@ -253,6 +480,9 @@
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     [collectionView deselectItemAtIndexPath:indexPath animated:YES];
     
+    // Don't handle selection if we're in dragging mode
+    if (self.draggingIndexPath) return;
+    
     // Add visual feedback for the tap
     EntityCardCell *cell = (EntityCardCell *)[collectionView cellForItemAtIndexPath:indexPath];
     [self animateCardTap:cell];
@@ -290,30 +520,6 @@
         // Sensors are read-only, show info instead
         [self showSensorInfoForEntity:entity];
     }
-}
-
-#pragma mark - UICollectionViewDelegateFlowLayout
-
-- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    // Calculate cell size based on user's column preference
-    CGFloat padding = 16.0;
-    CGFloat interItemSpacing = 12.0;
-    CGFloat availableWidth = collectionView.bounds.size.width - (2 * padding) - ((self.columnCount - 1) * interItemSpacing);
-    CGFloat cellWidth = availableWidth / self.columnCount;
-    
-    return CGSizeMake(cellWidth, 100.0);
-}
-
-- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section {
-    return UIEdgeInsetsMake(16, 16, 16, 16);
-}
-
-- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section {
-    return 12.0;
-}
-
-- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
-    return 12.0;
 }
 
 #pragma mark - Action Methods
