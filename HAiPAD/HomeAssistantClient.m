@@ -172,8 +172,10 @@
                         [self.delegate homeAssistantClient:self didFailWithError:error];
                     }
                 }
-                // Refresh states after service call
-                [self fetchStates];
+                // Refresh states after service call with a small delay to allow Home Assistant to process the change
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [self fetchStates];
+                });
             });
         }];
         
@@ -211,8 +213,10 @@
                         [self.delegate homeAssistantClient:self didFailWithError:error];
                     }
                 }
-                // Refresh states after service call
-                [self fetchStates];
+                // Refresh states after service call with a small delay to allow Home Assistant to process the change
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [self fetchStates];
+                });
             });
         }];
         
