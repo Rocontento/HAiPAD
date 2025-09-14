@@ -30,6 +30,9 @@
 @property (nonatomic, strong) NSIndexPath *draggedIndexPath;
 @property (nonatomic, strong) UIView *draggedCellSnapshot;
 @property (nonatomic, assign) CGPoint draggedCellCenter;
+// Resize preview properties
+@property (nonatomic, strong) UIView *resizePreviewView;
+@property (nonatomic, strong) NSIndexPath *resizingIndexPath;
 @end
 
 @implementation DashboardViewController
@@ -112,19 +115,33 @@
         self.columnCount = 4; // Default to 4 columns for whiteboard
     }
 
-    // Load grid size preference  
+    // Load grid size preference (for backward compatibility)
     NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
-    if (gridSize == 0) {
-        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-            gridSize = 6; // Default 6x6 for iPad
+    
+    // Load new separate grid width and height preferences
+    NSInteger gridWidth = [defaults integerForKey:@"ha_grid_width"];
+    NSInteger gridHeight = [defaults integerForKey:@"ha_grid_height"];
+    
+    // Use separate width/height if available, otherwise fall back to gridSize or defaults
+    if (gridWidth == 0) {
+        if (gridSize > 0) {
+            gridWidth = gridSize; // Use legacy gridSize for width
         } else {
-            gridSize = 4; // Default 4x4 for iPhone
+            gridWidth = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
+        }
+    }
+    
+    if (gridHeight == 0) {
+        if (gridSize > 0) {
+            gridHeight = gridSize; // Use legacy gridSize for height
+        } else {
+            gridHeight = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
         }
     }
 
-    // Update grid layout
-    self.whiteboardLayout.gridColumns = self.columnCount;
-    self.whiteboardLayout.gridRows = gridSize;
+    // Update grid layout with separate dimensions
+    self.whiteboardLayout.gridColumns = gridWidth;
+    self.whiteboardLayout.gridRows = gridHeight;
 
     if (baseURL && accessToken) {
         [self.homeAssistantClient connectWithBaseURL:baseURL accessToken:accessToken];
@@ -427,16 +444,33 @@
     NSInteger columnCount = [defaults integerForKey:@"ha_column_count"];
     NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
     
+    // Load new separate grid width and height preferences
+    NSInteger gridWidth = [defaults integerForKey:@"ha_grid_width"];
+    NSInteger gridHeight = [defaults integerForKey:@"ha_grid_height"];
+    
     if (columnCount == 0) {
         columnCount = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
     }
     
-    if (gridSize == 0) {
-        gridSize = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
+    // Use separate width/height if available, otherwise fall back to gridSize or defaults
+    if (gridWidth == 0) {
+        if (gridSize > 0) {
+            gridWidth = gridSize; // Use legacy gridSize for width
+        } else {
+            gridWidth = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
+        }
+    }
+    
+    if (gridHeight == 0) {
+        if (gridSize > 0) {
+            gridHeight = gridSize; // Use legacy gridSize for height
+        } else {
+            gridHeight = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
+        }
     }
 
-    self.whiteboardLayout.gridColumns = columnCount;
-    self.whiteboardLayout.gridRows = gridSize;
+    self.whiteboardLayout.gridColumns = gridWidth;
+    self.whiteboardLayout.gridRows = gridHeight;
     self.whiteboardLayout.cellSpacing = 12.0;
     self.whiteboardLayout.gridInsets = UIEdgeInsetsMake(16, 16, 16, 16);
     self.whiteboardLayout.showEmptySlots = NO; // Only show during editing
@@ -757,14 +791,34 @@
     if (!self.editingMode) {
         [self setEditingMode:YES];
     }
+    
+    // Store the resizing index path
+    self.resizingIndexPath = [self.collectionView indexPathForCell:cell];
+    
+    // Show empty grid slots for better visual feedback
+    self.whiteboardLayout.showEmptySlots = YES;
+    [self.whiteboardLayout invalidateLayout];
+    
+    // Create resize preview overlay
+    [self createResizePreviewView];
 }
 
 - (void)entityCardCell:(EntityCardCell *)cell didUpdateResizing:(UIGestureRecognizer *)gesture {
-    // Update layout during resizing for real-time feedback
+    // Update preview during resizing for real-time feedback
+    [self updateResizePreviewWithCell:cell];
     [self.whiteboardLayout invalidateLayout];
 }
 
 - (void)entityCardCell:(EntityCardCell *)cell didEndResizing:(UIGestureRecognizer *)gesture {
+    // Hide empty grid slots
+    self.whiteboardLayout.showEmptySlots = NO;
+    
+    // Remove resize preview
+    [self removeResizePreviewView];
+    
+    // Clear resizing state
+    self.resizingIndexPath = nil;
+    
     // Final layout update
     [self.whiteboardLayout invalidateLayout];
     [self.collectionView layoutIfNeeded];
@@ -907,6 +961,107 @@
     if ([cell isKindOfClass:[EntityCardCell class]]) {
         [cell configureWithEntity:updatedEntity];
         [self animateEntityUpdate:cell];
+    }
+}
+
+#pragma mark - Resize Preview Methods
+
+- (void)createResizePreviewView {
+    if (self.resizePreviewView) {
+        [self removeResizePreviewView];
+    }
+    
+    // Create semi-transparent overlay view
+    self.resizePreviewView = [[UIView alloc] initWithFrame:self.collectionView.bounds];
+    self.resizePreviewView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.1];
+    self.resizePreviewView.userInteractionEnabled = NO;
+    
+    [self.collectionView addSubview:self.resizePreviewView];
+    
+    // Add subtle fade-in animation
+    self.resizePreviewView.alpha = 0.0;
+    [UIView animateWithDuration:0.2 animations:^{
+        self.resizePreviewView.alpha = 1.0;
+    }];
+}
+
+- (void)updateResizePreviewWithCell:(EntityCardCell *)cell {
+    if (!self.resizePreviewView || !self.resizingIndexPath) return;
+    
+    // Clear previous preview highlights
+    for (UIView *subview in self.resizePreviewView.subviews) {
+        [subview removeFromSuperview];
+    }
+    
+    // Get the current grid position and size for the resizing cell
+    CGPoint currentPosition = [self gridPositionForItemAtIndexPath:self.resizingIndexPath];
+    CGSize currentGridSize = cell.gridSize;
+    
+    // Create highlighted grid cells to show occupied area
+    for (NSInteger row = currentPosition.y; row < currentPosition.y + currentGridSize.height; row++) {
+        for (NSInteger col = currentPosition.x; col < currentPosition.x + currentGridSize.width; col++) {
+            // Check if this position is within grid bounds
+            if (col >= 0 && col < self.whiteboardLayout.gridColumns && 
+                row >= 0 && row < self.whiteboardLayout.gridRows) {
+                
+                CGRect cellFrame = [self.whiteboardLayout frameForGridPosition:CGPointMake(col, row) size:CGSizeMake(1, 1)];
+                
+                UIView *highlightView = [[UIView alloc] initWithFrame:cellFrame];
+                highlightView.backgroundColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.3];
+                highlightView.layer.borderWidth = 2.0;
+                highlightView.layer.borderColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.8].CGColor;
+                highlightView.layer.cornerRadius = 4.0;
+                
+                [self.resizePreviewView addSubview:highlightView];
+                
+                // Add subtle pulsing animation
+                [UIView animateWithDuration:0.6 delay:0.0 options:UIViewAnimationOptionRepeat | UIViewAnimationOptionAutoreverse | UIViewAnimationOptionCurveEaseInOut animations:^{
+                    highlightView.alpha = 0.5;
+                } completion:nil];
+            }
+        }
+    }
+    
+    // Add size indicator label
+    UILabel *sizeLabel = [[UILabel alloc] init];
+    sizeLabel.text = [NSString stringWithFormat:@"%.0fx%.0f grid cells", currentGridSize.width, currentGridSize.height];
+    sizeLabel.font = [UIFont boldSystemFontOfSize:16];
+    sizeLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+    sizeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.9];
+    sizeLabel.textAlignment = NSTextAlignmentCenter;
+    sizeLabel.layer.cornerRadius = 8.0;
+    sizeLabel.layer.masksToBounds = YES;
+    sizeLabel.layer.borderWidth = 2.0;
+    sizeLabel.layer.borderColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.8].CGColor;
+    
+    [sizeLabel sizeToFit];
+    sizeLabel.frame = CGRectMake(sizeLabel.frame.origin.x, sizeLabel.frame.origin.y, 
+                                sizeLabel.frame.size.width + 16, sizeLabel.frame.size.height + 8);
+    
+    // Position the label at the top of the collection view
+    sizeLabel.center = CGPointMake(self.collectionView.bounds.size.width / 2, 40);
+    
+    [self.resizePreviewView addSubview:sizeLabel];
+    
+    // Add bounce animation to the label
+    sizeLabel.transform = CGAffineTransformMakeScale(0.8, 0.8);
+    [UIView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        sizeLabel.transform = CGAffineTransformMakeScale(1.1, 1.1);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.1 animations:^{
+            sizeLabel.transform = CGAffineTransformIdentity;
+        }];
+    }];
+}
+
+- (void)removeResizePreviewView {
+    if (self.resizePreviewView) {
+        [UIView animateWithDuration:0.2 animations:^{
+            self.resizePreviewView.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            [self.resizePreviewView removeFromSuperview];
+            self.resizePreviewView = nil;
+        }];
     }
 }
 

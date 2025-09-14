@@ -54,12 +54,28 @@
     self.statusLabel.textColor = [UIColor grayColor];
     self.statusLabel.numberOfLines = 0;
     
-    // Configure grid size slider
+    // Configure grid size slider (legacy - for backward compatibility)
     if (self.gridSizeSlider) {
         self.gridSizeSlider.minimumValue = 1.0;
         self.gridSizeSlider.maximumValue = 8.0;
         self.gridSizeSlider.continuous = YES;
         [self.gridSizeSlider addTarget:self action:@selector(gridSizeSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    }
+    
+    // Configure grid width slider (new)
+    if (self.gridWidthSlider) {
+        self.gridWidthSlider.minimumValue = 2.0;
+        self.gridWidthSlider.maximumValue = 8.0;
+        self.gridWidthSlider.continuous = YES;
+        [self.gridWidthSlider addTarget:self action:@selector(gridWidthSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    }
+    
+    // Configure grid height slider (new)
+    if (self.gridHeightSlider) {
+        self.gridHeightSlider.minimumValue = 2.0;
+        self.gridHeightSlider.maximumValue = 10.0;
+        self.gridHeightSlider.continuous = YES;
+        [self.gridHeightSlider addTarget:self action:@selector(gridHeightSliderChanged:) forControlEvents:UIControlEventValueChanged];
     }
 }
 
@@ -99,6 +115,36 @@
         self.gridSizeSlider.value = gridSize;
         [self updateGridSizeLabel];
     }
+    
+    // Load grid width preference (new)
+    if (self.gridWidthSlider && self.gridWidthLabel) {
+        NSInteger gridWidth = [defaults integerForKey:@"ha_grid_width"];
+        if (gridWidth == 0) {
+            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                gridWidth = 4; // Default 4 columns for iPad
+            } else {
+                gridWidth = 2; // Default 2 columns for iPhone
+            }
+        }
+        
+        self.gridWidthSlider.value = gridWidth;
+        [self updateGridWidthLabel];
+    }
+    
+    // Load grid height preference (new)
+    if (self.gridHeightSlider && self.gridHeightLabel) {
+        NSInteger gridHeight = [defaults integerForKey:@"ha_grid_height"];
+        if (gridHeight == 0) {
+            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                gridHeight = 6; // Default 6 rows for iPad
+            } else {
+                gridHeight = 4; // Default 4 rows for iPhone
+            }
+        }
+        
+        self.gridHeightSlider.value = gridHeight;
+        [self updateGridHeightLabel];
+    }
 }
 
 #pragma mark - IBActions
@@ -137,10 +183,22 @@
     NSInteger columnCount = self.columnsSegmentedControl.selectedSegmentIndex + 1;
     [defaults setInteger:columnCount forKey:@"ha_column_count"];
     
-    // Save grid size preference
+    // Save grid size preference (legacy - for backward compatibility)
     if (self.gridSizeSlider) {
         NSInteger gridSize = (NSInteger)self.gridSizeSlider.value;
         [defaults setInteger:gridSize forKey:@"ha_grid_size"];
+    }
+    
+    // Save grid width preference (new)
+    if (self.gridWidthSlider) {
+        NSInteger gridWidth = (NSInteger)self.gridWidthSlider.value;
+        [defaults setInteger:gridWidth forKey:@"ha_grid_width"];
+    }
+    
+    // Save grid height preference (new)
+    if (self.gridHeightSlider) {
+        NSInteger gridHeight = (NSInteger)self.gridHeightSlider.value;
+        [defaults setInteger:gridHeight forKey:@"ha_grid_height"];
     }
     
     // Set default refresh intervals if not already configured
@@ -276,10 +334,32 @@
     [self updateGridSizeLabel];
 }
 
+- (IBAction)gridWidthSliderChanged:(id)sender {
+    [self updateGridWidthLabel];
+}
+
+- (IBAction)gridHeightSliderChanged:(id)sender {
+    [self updateGridHeightLabel];
+}
+
 - (void)updateGridSizeLabel {
     if (self.gridSizeSlider && self.gridSizeLabel) {
         NSInteger gridSize = (NSInteger)self.gridSizeSlider.value;
         self.gridSizeLabel.text = [NSString stringWithFormat:@"Grid Size: %ldx%ld", (long)gridSize, (long)gridSize];
+    }
+}
+
+- (void)updateGridWidthLabel {
+    if (self.gridWidthSlider && self.gridWidthLabel) {
+        NSInteger gridWidth = (NSInteger)self.gridWidthSlider.value;
+        self.gridWidthLabel.text = [NSString stringWithFormat:@"Grid Width: %ld columns", (long)gridWidth];
+    }
+}
+
+- (void)updateGridHeightLabel {
+    if (self.gridHeightSlider && self.gridHeightLabel) {
+        NSInteger gridHeight = (NSInteger)self.gridHeightSlider.value;
+        self.gridHeightLabel.text = [NSString stringWithFormat:@"Grid Height: %ld rows", (long)gridHeight];
     }
 }
 
