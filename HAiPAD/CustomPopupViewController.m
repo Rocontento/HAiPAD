@@ -108,8 +108,8 @@
     
     // Title label
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
-    self.titleLabel.textColor = [UIColor darkTextColor];
+    self.titleLabel.font = [UIFont boldSystemFontOfSize:20]; // Use boldSystemFont for iOS 9.3.5 compatibility
+    self.titleLabel.textColor = [UIColor blackColor];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.numberOfLines = 0;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -186,7 +186,8 @@
     // Create info content similar to the original alert
     UILabel *infoLabel = [[UILabel alloc] init];
     infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor darkTextColor]; // Changed from grayColor to darkTextColor for better visibility
+    infoLabel.textColor = [UIColor blackColor]; // Use explicit black color for iOS 9.3.5 compatibility
+    infoLabel.backgroundColor = [UIColor colorWithWhite:0.98 alpha:1.0]; // Light background to help debugging
     infoLabel.numberOfLines = 0;
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:infoLabel];
@@ -213,6 +214,9 @@
     
     // Add debugging - ensure the label has content
     NSLog(@"PopupInfo: Setting up info content with text: %@", message);
+    NSLog(@"PopupInfo: Title text: '%@'", self.titleLabel.text);
+    NSLog(@"PopupInfo: InfoLabel textColor: %@", infoLabel.textColor);
+    NSLog(@"PopupInfo: InfoLabel font: %@", infoLabel.font);
     
     // Layout info label
     [NSLayoutConstraint activateConstraints:@[
@@ -236,7 +240,7 @@
     // Create temperature display
     UILabel *tempLabel = [[UILabel alloc] init];
     tempLabel.font = [UIFont systemFontOfSize:16];
-    tempLabel.textColor = [UIColor darkTextColor];
+    tempLabel.textColor = [UIColor blackColor];
     tempLabel.numberOfLines = 0;
     tempLabel.textAlignment = NSTextAlignmentCenter;
     tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -284,7 +288,7 @@
     
     UILabel *stateLabel = [[UILabel alloc] init];
     stateLabel.font = [UIFont systemFontOfSize:16];
-    stateLabel.textColor = [UIColor darkTextColor];
+    stateLabel.textColor = [UIColor blackColor];
     stateLabel.textAlignment = NSTextAlignmentCenter;
     stateLabel.text = [NSString stringWithFormat:@"Current state: %@", state];
     stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -311,7 +315,7 @@
     
     UILabel *stateLabel = [[UILabel alloc] init];
     stateLabel.font = [UIFont systemFontOfSize:16];
-    stateLabel.textColor = [UIColor darkTextColor];
+    stateLabel.textColor = [UIColor blackColor];
     stateLabel.textAlignment = NSTextAlignmentCenter;
     stateLabel.text = [NSString stringWithFormat:@"Current state: %@", state];
     stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -382,7 +386,7 @@
     
     UILabel *infoLabel = [[UILabel alloc] init];
     infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor darkTextColor];
+    infoLabel.textColor = [UIColor blackColor];
     infoLabel.numberOfLines = 0;
     infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
     infoLabel.text = message;
@@ -408,7 +412,7 @@
 - (void)addActionButton:(NSString *)title style:(CustomPopupButtonStyle)style action:(NSString *)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     [button setTitle:title forState:UIControlStateNormal];
-    button.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    button.titleLabel.font = [UIFont boldSystemFontOfSize:16]; // Use boldSystemFont for iOS 9.3.5 compatibility
     
     // Style button based on type
     switch (style) {
@@ -418,7 +422,7 @@
             break;
         case CustomPopupButtonStyleSecondary:
             button.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-            [button setTitleColor:[UIColor darkTextColor] forState:UIControlStateNormal];
+            [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
             break;
         case CustomPopupButtonStyleCancel:
             button.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0];
