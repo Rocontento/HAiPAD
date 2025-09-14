@@ -391,62 +391,6 @@
                                             <constraint firstAttribute="bottom" secondItem="background-image-button" secondAttribute="bottom" constant="30" id="content-bottom"/>
                                         </constraints>
                                     </view>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Dashboard Customization" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="customization-section-label">
-                                        <rect key="frame" x="20" y="400" width="200" height="21"/>
-                                        <fontDescription key="fontDescription" type="boldSystem" pointSize="17"/>
-                                        <nil key="textColor"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
-                                    <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="background-type-control">
-                                        <rect key="frame" x="20" y="435" width="335" height="29"/>
-                                        <segments>
-                                            <segment title="Color"/>
-                                            <segment title="Image"/>
-                                        </segments>
-                                        <connections>
-                                            <action selector="backgroundTypeChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="background-type-action"/>
-                                        </connections>
-                                    </segmentedControl>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Dashboard Background" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dashboard-color-label">
-                                        <rect key="frame" x="20" y="479" width="160" height="21"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
-                                        <nil key="textColor"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="dashboard-color-button">
-                                        <rect key="frame" x="20" y="508" width="80" height="40"/>
-                                        <color key="backgroundColor" white="0.95" alpha="1" colorSpace="calibratedWhite"/>
-                                        <state key="normal" title=""/>
-                                        <connections>
-                                            <action selector="dashboardColorButtonTapped:" destination="daE-8z-kG5" eventType="touchUpInside" id="dashboard-color-action"/>
-                                        </connections>
-                                    </button>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Navigation Bar Color" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="navbar-color-label">
-                                        <rect key="frame" x="20" y="563" width="160" height="21"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
-                                        <nil key="textColor"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="navbar-color-button">
-                                        <rect key="frame" x="20" y="592" width="80" height="40"/>
-                                        <color key="backgroundColor" white="0.98" alpha="1" colorSpace="calibratedWhite"/>
-                                        <state key="normal" title=""/>
-                                        <connections>
-                                            <action selector="navbarColorButtonTapped:" destination="daE-8z-kG5" eventType="touchUpInside" id="navbar-color-action"/>
-                                        </connections>
-                                    </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="background-image-button">
-                                        <rect key="frame" x="20" y="647" width="335" height="44"/>
-                                        <color key="backgroundColor" red="0.2" green="0.6" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                        <state key="normal" title="Select Background Image">
-                                            <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
-                                        </state>
-                                        <connections>
-                                            <action selector="backgroundImageButtonTapped:" destination="daE-8z-kG5" eventType="touchUpInside" id="background-image-action"/>
-                                        </connections>
-                                    </button>
-                                        </constraints>
-                                    </view>
                                 </subviews>
                                 <constraints>
                                     <constraint firstItem="iCG-Nh-3bd" firstAttribute="top" secondItem="9nD-ug-Z2E" secondAttribute="top" id="BWb-Ed-gN3"/>
