@@ -17,6 +17,7 @@
 		3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */; };
 		3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */; };
 		3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */; };
+		98512429CFCFD3E80AA01292 /* EntitySelectionViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 79BABE2B14F6CD66E0DA5967 /* EntitySelectionViewController.m */; };
 		F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 995AE90E56A5453ABD549115 /* CustomPopupViewController.m */; };
 		074FF8890754473B9C791351 /* WhiteboardGridLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = B9DF490689F84031B2F93DC1 /* WhiteboardGridLayout.m */; };
 		F64654EC7D5144F95BF829D9 /* EmptyGridSlotView.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB6D15C6AE48B4945C75C2 /* EmptyGridSlotView.m */; };
@@ -41,6 +42,8 @@
 		3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntitySettingsViewController.m; sourceTree = "<group>"; };
 		3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EntityCardCell.h; sourceTree = "<group>"; };
 		3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntityCardCell.m; sourceTree = "<group>"; };
+		6AC2054CD35CC03BF682AD52 /* EntitySelectionViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EntitySelectionViewController.h; sourceTree = "<group>"; };
+		79BABE2B14F6CD66E0DA5967 /* EntitySelectionViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntitySelectionViewController.m; sourceTree = "<group>"; };
 		06D8AE62F95F48BBBDF5D653 /* CustomPopupViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CustomPopupViewController.h; sourceTree = "<group>"; };
 		995AE90E56A5453ABD549115 /* CustomPopupViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomPopupViewController.m; sourceTree = "<group>"; };
 		976E357ACEFD4CC5BF1FE136 /* WhiteboardGridLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WhiteboardGridLayout.h; sourceTree = "<group>"; };
@@ -107,6 +110,8 @@
 				3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */,
 				3D0E7BA81E8B8D1000B5C9B5 /* EntitySettingsViewController.h */,
 				3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */,
+				6AC2054CD35CC03BF682AD52 /* EntitySelectionViewController.h */,
+				79BABE2B14F6CD66E0DA5967 /* EntitySelectionViewController.m */,
 				06D8AE62F95F48BBBDF5D653 /* CustomPopupViewController.h */,
 				995AE90E56A5453ABD549115 /* CustomPopupViewController.m */,
 			);
@@ -216,6 +221,7 @@
 				3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */,
 				3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */,
 				3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */,
+				98512429CFCFD3E80AA01292 /* EntitySelectionViewController.m in Sources */,
 				F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */,
 				074FF8890754473B9C791351 /* WhiteboardGridLayout.m in Sources */,
 				F64654EC7D5144F95BF829D9 /* EmptyGridSlotView.m in Sources */,
