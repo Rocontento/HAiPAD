@@ -257,6 +257,22 @@
     } else {
         // Apply background color
         self.view.backgroundColor = self.dashboardBackgroundColor;
+        
+        // Restore collection view background
+        if (self.collectionView) {
+            self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        }
+        
+        // Remove background image and status bar overlay when using color mode
+        UIView *backgroundImageView = [self.view viewWithTag:999];
+        if (backgroundImageView) {
+            [backgroundImageView removeFromSuperview];
+        }
+        
+        UIView *statusBarOverlay = [self.view viewWithTag:998];
+        if (statusBarOverlay) {
+            [statusBarOverlay removeFromSuperview];
+        }
     }
     
     // Apply navbar color
@@ -267,34 +283,135 @@
 
 - (void)applyBackgroundImage {
     if (!self.backgroundImage) {
+        NSLog(@"Dashboard: No background image to apply");
         return;
     }
     
+    NSLog(@"Dashboard: Applying background image with size: %@", NSStringFromCGSize(self.backgroundImage.size));
+    
     // Remove any existing background image views to avoid duplicates
-    for (UIView *subview in self.view.subviews) {
-        if ([subview isKindOfClass:[UIImageView class]] && subview.tag == 999) {
-            [subview removeFromSuperview];
-            break;
-        }
+    UIView *existingBackgroundView = [self.view viewWithTag:999];
+    if (existingBackgroundView) {
+        [existingBackgroundView removeFromSuperview];
     }
     
-    // Apply background image
+    // Remove existing status bar overlay
+    UIView *existingOverlay = [self.view viewWithTag:998];
+    if (existingOverlay) {
+        [existingOverlay removeFromSuperview];
+    }
+    
+    // Load saved positioning data
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    CGFloat savedScale = [defaults floatForKey:@"ha_background_scale"];
+    CGFloat savedOffsetX = [defaults floatForKey:@"ha_background_offset_x"];
+    CGFloat savedOffsetY = [defaults floatForKey:@"ha_background_offset_y"];
+    
+    NSLog(@"Dashboard: Loaded positioning - scale: %f, offset: (%f, %f)", savedScale, savedOffsetX, savedOffsetY);
+    
+    // Create background image view
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
     backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
     backgroundImageView.clipsToBounds = YES;
-    backgroundImageView.tag = 999; // Tag to identify background image view
-    self.view.backgroundColor = [UIColor clearColor];
+    backgroundImageView.tag = 999;
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Set constraints to fill the view
-    backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    // Get current view size
+    CGSize viewSize = self.view.bounds.size;
+    CGSize imageSize = self.backgroundImage.size;
+    
+    NSLog(@"Dashboard: View size: %@, Image size: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
+    
+    if (savedScale > 0) {
+        // Use saved positioning from preview
+        
+        // Calculate base scale that fits image to screen
+        CGFloat scaleX = viewSize.width / imageSize.width;
+        CGFloat scaleY = viewSize.height / imageSize.height;
+        CGFloat fitScale = MIN(scaleX, scaleY);
+        
+        // Apply user's scale adjustment
+        CGFloat finalScale = fitScale * savedScale;
+        CGSize scaledSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
+        
+        // Calculate center position
+        CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
+        
+        // Apply saved offset
+        center.x += savedOffsetX * finalScale;
+        center.y += savedOffsetY * finalScale;
+        
+        // Set final frame
+        backgroundImageView.frame = CGRectMake(
+            center.x - scaledSize.width / 2.0,
+            center.y - scaledSize.height / 2.0,
+            scaledSize.width,
+            scaledSize.height
+        );
+        
+        NSLog(@"Dashboard: Applied saved positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+        
+    } else {
+        // No saved positioning, use default: fill entire screen
+        
+        // Calculate scale to fill the entire view (may crop)
+        CGFloat scaleX = viewSize.width / imageSize.width;
+        CGFloat scaleY = viewSize.height / imageSize.height;
+        CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to fill entire screen
+        
+        CGSize scaledSize = CGSizeMake(imageSize.width * fillScale, imageSize.height * fillScale);
+        
+        // Center the image
+        CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
+        
+        backgroundImageView.frame = CGRectMake(
+            center.x - scaledSize.width / 2.0,
+            center.y - scaledSize.height / 2.0,
+            scaledSize.width,
+            scaledSize.height
+        );
+        
+        NSLog(@"Dashboard: Applied default positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+    }
+    
+    // Ensure main content has transparent background to show image
+    self.view.backgroundColor = [UIColor clearColor];
+    if (self.collectionView) {
+        self.collectionView.backgroundColor = [UIColor clearColor];
+    }
+    
+    // Update status bar appearance for better visibility
+    [self updateStatusBarAppearance];
+}
+
+- (void)updateStatusBarAppearance {
+    // Only proceed if we have a background image
+    if (!self.backgroundImage || self.backgroundType != 1) {
+        return;
+    }
+    
+    // Remove any existing status bar overlay
+    UIView *existingOverlay = [self.view viewWithTag:998];
+    if (existingOverlay) {
+        [existingOverlay removeFromSuperview];
+    }
+    
+    // Create a subtle overlay for the status bar area to improve text readability
+    UIView *statusBarOverlay = [[UIView alloc] init];
+    statusBarOverlay.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.2]; // Slightly more visible overlay
+    statusBarOverlay.tag = 998; // Tag to identify status bar overlay
+    statusBarOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    [self.view addSubview:statusBarOverlay];
+    
+    // Position the overlay to cover only the status bar area
     [NSLayoutConstraint activateConstraints:@[
-        [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
+        [statusBarOverlay.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [statusBarOverlay.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [statusBarOverlay.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [statusBarOverlay.heightAnchor constraintEqualToConstant:20] // Status bar height on iOS 9.3.5
     ]];
 }
 

@@ -21,6 +21,7 @@
 		F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 995AE90E56A5453ABD549115 /* CustomPopupViewController.m */; };
 		074FF8890754473B9C791351 /* WhiteboardGridLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = B9DF490689F84031B2F93DC1 /* WhiteboardGridLayout.m */; };
 		F64654EC7D5144F95BF829D9 /* EmptyGridSlotView.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DEB6D15C6AE48B4945C75C2 /* EmptyGridSlotView.m */; };
+		A1B2C3D4E5F6789012345678 /* ImagePreviewViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A8B7C6D5E4F321098765432 /* ImagePreviewViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +51,8 @@
 		B9DF490689F84031B2F93DC1 /* WhiteboardGridLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WhiteboardGridLayout.m; sourceTree = "<group>"; };
 		8B2B8828AE574835A0C14CB4 /* EmptyGridSlotView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EmptyGridSlotView.h; sourceTree = "<group>"; };
 		7DEB6D15C6AE48B4945C75C2 /* EmptyGridSlotView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EmptyGridSlotView.m; sourceTree = "<group>"; };
+		1F2E3D4C5B6A7890FEDCBA98 /* ImagePreviewViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImagePreviewViewController.h; sourceTree = "<group>"; };
+		9A8B7C6D5E4F321098765432 /* ImagePreviewViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ImagePreviewViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +117,8 @@
 				79BABE2B14F6CD66E0DA5967 /* EntitySelectionViewController.m */,
 				06D8AE62F95F48BBBDF5D653 /* CustomPopupViewController.h */,
 				995AE90E56A5453ABD549115 /* CustomPopupViewController.m */,
+				1F2E3D4C5B6A7890FEDCBA98 /* ImagePreviewViewController.h */,
+				9A8B7C6D5E4F321098765432 /* ImagePreviewViewController.m */,
 			);
 			name = Controllers;
 			sourceTree = "<group>";
@@ -225,6 +230,7 @@
 				F44165B1A84A4431BB5BA8F2 /* CustomPopupViewController.m in Sources */,
 				074FF8890754473B9C791351 /* WhiteboardGridLayout.m in Sources */,
 				F64654EC7D5144F95BF829D9 /* EmptyGridSlotView.m in Sources */,
+				A1B2C3D4E5F6789012345678 /* ImagePreviewViewController.m in Sources */,
 				3D0E7B8F1E8B8C8A00B5C9B5 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
