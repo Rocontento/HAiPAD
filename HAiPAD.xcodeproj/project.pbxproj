@@ -17,6 +17,8 @@
 		3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA71E8B8D0000B5C9B5 /* ConfigurationViewController.m */; };
 		3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */; };
 		3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */; };
+		3D0E7BAD1E8B8D3000B5C9B5 /* WhiteboardLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BAE1E8B8D3000B5C9B5 /* WhiteboardLayout.m */; };
+		3D0E7BAF1E8B8D4000B5C9B5 /* GridOverlayView.m in Sources */ = {isa = PBXBuildFile; fileRef = 3D0E7BB01E8B8D4000B5C9B5 /* GridOverlayView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +40,10 @@
 		3D0E7BA91E8B8D1000B5C9B5 /* EntitySettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntitySettingsViewController.m; sourceTree = "<group>"; };
 		3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EntityCardCell.h; sourceTree = "<group>"; };
 		3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EntityCardCell.m; sourceTree = "<group>"; };
+		3D0E7BAC1E8B8D3000B5C9B5 /* WhiteboardLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WhiteboardLayout.h; sourceTree = "<group>"; };
+		3D0E7BAE1E8B8D3000B5C9B5 /* WhiteboardLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WhiteboardLayout.m; sourceTree = "<group>"; };
+		3D0E7BB01E8B8D4000B5C9B5 /* GridOverlayView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GridOverlayView.m; sourceTree = "<group>"; };
+		3D0E7BB11E8B8D4000B5C9B5 /* GridOverlayView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GridOverlayView.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +116,10 @@
 				3D0E7B991E8B8C8A00B5C9B5 /* Assets.xcassets */,
 				3D0E7BAA1E8B8D2000B5C9B5 /* EntityCardCell.h */,
 				3D0E7BAB1E8B8D2000B5C9B5 /* EntityCardCell.m */,
+				3D0E7BAC1E8B8D3000B5C9B5 /* WhiteboardLayout.h */,
+				3D0E7BAE1E8B8D3000B5C9B5 /* WhiteboardLayout.m */,
+				3D0E7BB11E8B8D4000B5C9B5 /* GridOverlayView.h */,
+				3D0E7BB01E8B8D4000B5C9B5 /* GridOverlayView.m */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -201,6 +211,8 @@
 				3D0E7BA81E8B8D0000B5C9B5 /* ConfigurationViewController.m in Sources */,
 				3D0E7BAA1E8B8D1000B5C9B5 /* EntitySettingsViewController.m in Sources */,
 				3D0E7BAC1E8B8D2000B5C9B5 /* EntityCardCell.m in Sources */,
+				3D0E7BAD1E8B8D3000B5C9B5 /* WhiteboardLayout.m in Sources */,
+				3D0E7BAF1E8B8D4000B5C9B5 /* GridOverlayView.m in Sources */,
 				3D0E7B8F1E8B8C8A00B5C9B5 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

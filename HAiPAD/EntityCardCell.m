@@ -52,7 +52,6 @@
 - (void)configureWithEntity:(NSDictionary *)entity {
     NSString *entityId = entity[@"entity_id"];
     NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
     
     self.nameLabel.text = friendlyName;
     self.stateLabel.text = [self formatStateForEntity:entity];
