@@ -298,22 +298,56 @@
         [existingOverlay removeFromSuperview];
     }
     
+    // Load saved positioning data
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    CGFloat scale = [defaults floatForKey:@"ha_background_scale"];
+    CGFloat offsetX = [defaults floatForKey:@"ha_background_offset_x"];
+    CGFloat offsetY = [defaults floatForKey:@"ha_background_offset_y"];
+    
+    // Default scale if none saved
+    if (scale <= 0) {
+        scale = 1.0;
+    }
+    
     // Create background image view with proper scaling
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFit; // Show entire image, may have letterboxing
-    backgroundImageView.backgroundColor = [UIColor blackColor]; // Fill letterbox areas with black
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill; // Fill entire screen, may crop image
     backgroundImageView.clipsToBounds = YES;
     backgroundImageView.tag = 999;
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Set frame to fill entire screen
-    backgroundImageView.frame = self.view.bounds;
-    backgroundImageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    // Calculate image size and positioning
+    CGSize imageSize = self.backgroundImage.size;
+    CGSize viewSize = self.view.bounds.size;
+    
+    // Calculate fit scale (what was used as reference in preview)
+    CGFloat scaleX = viewSize.width / imageSize.width;
+    CGFloat scaleY = viewSize.height / imageSize.height;
+    CGFloat fitScale = MIN(scaleX, scaleY);
+    
+    // Apply the user's chosen scale
+    CGFloat finalScale = fitScale * scale;
+    CGSize scaledImageSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
+    
+    // Calculate center position
+    CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
+    
+    // Apply user's offset (scaled to current view)
+    center.x += offsetX * finalScale;
+    center.y += offsetY * finalScale;
+    
+    // Set frame with scaled size and offset position
+    backgroundImageView.frame = CGRectMake(
+        center.x - scaledImageSize.width / 2.0,
+        center.y - scaledImageSize.height / 2.0,
+        scaledImageSize.width,
+        scaledImageSize.height
+    );
     
     // Ensure main content has transparent background to show image
-    self.view.backgroundColor = [UIColor blackColor]; // Changed to black to match letterbox
+    self.view.backgroundColor = [UIColor blackColor];
     if (self.collectionView) {
         self.collectionView.backgroundColor = [UIColor clearColor];
     }

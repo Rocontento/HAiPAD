@@ -423,6 +423,7 @@
     NSData *backgroundImageData = [defaults dataForKey:@"ha_background_image"];
     if (backgroundImageData) {
         self.selectedBackgroundImage = [UIImage imageWithData:backgroundImageData];
+        // Note: Scale and offset will be loaded by DashboardViewController when applying the image
     }
     
     // Load background type
@@ -760,11 +761,17 @@
 
 #pragma mark - ImagePreviewViewControllerDelegate
 
-- (void)imagePreviewViewController:(ImagePreviewViewController *)controller didFinishWithImage:(UIImage *)croppedImage transform:(CGAffineTransform)transform {
+- (void)imagePreviewViewController:(ImagePreviewViewController *)controller didFinishWithImage:(UIImage *)croppedImage scale:(CGFloat)scale offset:(CGPoint)offset {
     [controller dismissViewControllerAnimated:YES completion:^{
         if (croppedImage) {
             // Resize image to reduce memory usage while maintaining quality
             self.selectedBackgroundImage = [self resizeImage:croppedImage toMaxSize:CGSizeMake(1024, 1024)];
+            
+            // Save scale and offset for later use
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            [defaults setFloat:scale forKey:@"ha_background_scale"];
+            [defaults setFloat:offset.x forKey:@"ha_background_offset_x"];
+            [defaults setFloat:offset.y forKey:@"ha_background_offset_y"];
             
             // Update the button to show a preview or checkmark
             if (self.backgroundImageButton) {

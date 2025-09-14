@@ -11,7 +11,7 @@
 @class ImagePreviewViewController;
 
 @protocol ImagePreviewViewControllerDelegate <NSObject>
-- (void)imagePreviewViewController:(ImagePreviewViewController *)controller didFinishWithImage:(UIImage *)croppedImage transform:(CGAffineTransform)transform;
+- (void)imagePreviewViewController:(ImagePreviewViewController *)controller didFinishWithImage:(UIImage *)croppedImage scale:(CGFloat)scale offset:(CGPoint)offset;
 - (void)imagePreviewViewControllerDidCancel:(ImagePreviewViewController *)controller;
 @end
 

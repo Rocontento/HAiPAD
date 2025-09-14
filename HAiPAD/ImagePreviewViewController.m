@@ -56,15 +56,20 @@
     self.scrollView.showsVerticalScrollIndicator = NO;
     self.scrollView.showsHorizontalScrollIndicator = NO;
     self.scrollView.bouncesZoom = YES;
+    self.scrollView.bounces = YES;
+    self.scrollView.scrollEnabled = YES;
+    self.scrollView.userInteractionEnabled = YES;
+    self.scrollView.multipleTouchEnabled = YES;
     self.scrollView.decelerationRate = UIScrollViewDecelerationRateFast;
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     
     [self.view addSubview:self.scrollView];
     
-    // Create image view
+    // Create image view with proper setup for zooming
     self.imageView = [[UIImageView alloc] initWithImage:self.originalImage];
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     self.imageView.userInteractionEnabled = YES;
+    self.imageView.clipsToBounds = YES;
     [self.scrollView addSubview:self.imageView];
     
     // Constraints for scroll view (full screen)
@@ -176,21 +181,24 @@
     CGSize imageSize = self.originalImage.size;
     CGSize scrollViewSize = self.scrollView.bounds.size;
     
-    // Set the image view frame to the image's natural size
-    self.imageView.frame = CGRectMake(0, 0, imageSize.width, imageSize.height);
-    
-    // Set the scroll view's content size to the image size
-    self.scrollView.contentSize = imageSize;
-    
-    // Calculate scale to fit
+    // Calculate the scale to fit the image in the scroll view
     CGFloat scaleX = scrollViewSize.width / imageSize.width;
     CGFloat scaleY = scrollViewSize.height / imageSize.height;
     CGFloat minScale = MIN(scaleX, scaleY);
     
-    // Set zoom scales
-    self.scrollView.minimumZoomScale = minScale * 0.5; // Allow zooming out
-    self.scrollView.maximumZoomScale = minScale * 4.0; // Allow zooming in
-    self.scrollView.zoomScale = minScale; // Start at fit-to-screen scale
+    // Set up zoom scales - allow zooming out less and zooming in more
+    self.scrollView.minimumZoomScale = minScale * 0.8; // Allow zooming out a bit
+    self.scrollView.maximumZoomScale = minScale * 6.0; // Allow significant zoom in
+    self.scrollView.zoomScale = 1.0; // Reset to no zoom first
+    
+    // Set the image view frame to the image's natural size
+    self.imageView.frame = CGRectMake(0, 0, imageSize.width, imageSize.height);
+    
+    // Set the content size to the image size
+    self.scrollView.contentSize = imageSize;
+    
+    // Now set the zoom scale to fit the image in the view
+    self.scrollView.zoomScale = minScale;
     
     // Center the image
     [self centerImageInScrollView];
@@ -200,12 +208,14 @@
     CGSize boundsSize = self.scrollView.bounds.size;
     CGRect contentsFrame = self.imageView.frame;
     
+    // Center horizontally
     if (contentsFrame.size.width < boundsSize.width) {
         contentsFrame.origin.x = (boundsSize.width - contentsFrame.size.width) / 2.0;
     } else {
         contentsFrame.origin.x = 0.0;
     }
     
+    // Center vertically
     if (contentsFrame.size.height < boundsSize.height) {
         contentsFrame.origin.y = (boundsSize.height - contentsFrame.size.height) / 2.0;
     } else {
@@ -213,6 +223,12 @@
     }
     
     self.imageView.frame = contentsFrame;
+    
+    // Update content insets for better centering when image is smaller than view
+    CGFloat topInset = MAX(0, (boundsSize.height - contentsFrame.size.height) / 2.0);
+    CGFloat leftInset = MAX(0, (boundsSize.width - contentsFrame.size.width) / 2.0);
+    
+    self.scrollView.contentInset = UIEdgeInsetsMake(topInset, leftInset, topInset, leftInset);
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -234,9 +250,25 @@
 }
 
 - (void)confirmButtonTapped:(id)sender {
-    // Instead of capturing current view, pass the original image and current transform information
-    if ([self.delegate respondsToSelector:@selector(imagePreviewViewController:didFinishWithImage:transform:)]) {
-        [self.delegate imagePreviewViewController:self didFinishWithImage:self.originalImage transform:CGAffineTransformIdentity];
+    // Calculate current scale relative to fit-to-screen
+    CGSize imageSize = self.originalImage.size;
+    CGSize scrollViewSize = self.scrollView.bounds.size;
+    CGFloat scaleX = scrollViewSize.width / imageSize.width;
+    CGFloat scaleY = scrollViewSize.height / imageSize.height;
+    CGFloat fitScale = MIN(scaleX, scaleY);
+    CGFloat relativeScale = self.scrollView.zoomScale / fitScale;
+    
+    // Calculate content offset relative to the image center
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    CGPoint imageCenter = CGPointMake(imageSize.width / 2.0, imageSize.height / 2.0);
+    CGPoint relativeOffset = CGPointMake(
+        (contentOffset.x - imageCenter.x) / fitScale,
+        (contentOffset.y - imageCenter.y) / fitScale
+    );
+    
+    // Pass the image with positioning data
+    if ([self.delegate respondsToSelector:@selector(imagePreviewViewController:didFinishWithImage:scale:offset:)]) {
+        [self.delegate imagePreviewViewController:self didFinishWithImage:self.originalImage scale:relativeScale offset:relativeOffset];
     }
 }
 
