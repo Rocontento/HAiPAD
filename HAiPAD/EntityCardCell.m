@@ -7,6 +7,7 @@
 //
 
 #import "EntityCardCell.h"
+#import "WhiteboardGridLayout.h"
 
 @interface EntityCardCell ()
 @property (nonatomic, strong) UIPanGestureRecognizer *resizeGesture;
@@ -118,14 +119,24 @@
                                            currentPoint.y - self.resizeStartPoint.y);
             
             // Calculate new grid size based on translation
-            // Assume each grid cell is approximately 100 points
-            CGFloat gridCellSize = 100.0;
+            // Get the actual cell size from the superview (collection view)
+            CGFloat gridCellSize = 100.0; // Default fallback
+            
+            if ([self.superview isKindOfClass:[UICollectionView class]]) {
+                UICollectionView *collectionView = (UICollectionView *)self.superview;
+                if ([collectionView.collectionViewLayout isKindOfClass:[WhiteboardGridLayout class]]) {
+                    WhiteboardGridLayout *layout = (WhiteboardGridLayout *)collectionView.collectionViewLayout;
+                    // Use the actual cell size from the layout
+                    gridCellSize = layout.cellSize.width;
+                }
+            }
+            
             NSInteger newWidth = MAX(1, self.resizeStartSize.x + (NSInteger)(translation.x / gridCellSize));
             NSInteger newHeight = MAX(1, self.resizeStartSize.y + (NSInteger)(translation.y / gridCellSize));
             
-            // Limit maximum size to reasonable bounds
-            newWidth = MIN(newWidth, 3);
-            newHeight = MIN(newHeight, 3);
+            // Limit maximum size to reasonable bounds (could be made configurable)
+            newWidth = MIN(newWidth, 4);
+            newHeight = MIN(newHeight, 4);
             
             CGSize newGridSize = CGSizeMake(newWidth, newHeight);
             
