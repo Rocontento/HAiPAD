@@ -298,23 +298,18 @@
         [existingOverlay removeFromSuperview];
     }
     
-    // Create background image view
+    // Create background image view with better configuration
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
-    backgroundImageView.clipsToBounds = YES;
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill; // This ensures the image fills the entire screen
+    backgroundImageView.clipsToBounds = YES; // This ensures the image doesn't overflow
     backgroundImageView.tag = 999; // Tag to identify background image view
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Set constraints to fill the entire view (including behind status bar)
-    backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
-    ]];
+    // Set frame directly to fill entire screen including status bar
+    backgroundImageView.frame = self.view.bounds;
+    backgroundImageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     
     // Ensure main content has transparent background to show image
     self.view.backgroundColor = [UIColor clearColor];

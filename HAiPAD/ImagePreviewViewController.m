@@ -16,6 +16,7 @@
 @property (nonatomic, strong) UIButton *cancelButton;
 @property (nonatomic, strong) UIButton *resetButton;
 @property (nonatomic, strong) UILabel *instructionLabel;
+@property (nonatomic, assign) BOOL overlayVisible;
 @end
 
 @implementation ImagePreviewViewController
@@ -24,6 +25,7 @@
     self = [super init];
     if (self) {
         self.originalImage = image;
+        self.overlayVisible = YES;
     }
     return self;
 }
@@ -38,8 +40,12 @@
     
     // Create overlay with buttons and instructions
     [self setupOverlay];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
     
-    // Set initial zoom to fit screen
+    // Setup zoom after layout is complete
     [self setupInitialZoom];
 }
 
@@ -51,18 +57,14 @@
     self.scrollView.showsHorizontalScrollIndicator = NO;
     self.scrollView.bouncesZoom = YES;
     self.scrollView.decelerationRate = UIScrollViewDecelerationRateFast;
-    
-    // Set zoom range
-    self.scrollView.minimumZoomScale = 0.1;
-    self.scrollView.maximumZoomScale = 3.0;
-    
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    
     [self.view addSubview:self.scrollView];
     
     // Create image view
     self.imageView = [[UIImageView alloc] initWithImage:self.originalImage];
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    self.imageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.imageView.userInteractionEnabled = YES;
     [self.scrollView addSubview:self.imageView];
     
     // Constraints for scroll view (full screen)
@@ -71,33 +73,30 @@
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-    ]];
+    ]);
     
-    // Constraints for image view
-    [NSLayoutConstraint activateConstraints:@[
-        [self.imageView.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor],
-        [self.imageView.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor],
-        [self.imageView.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor],
-        [self.imageView.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor],
-        [self.imageView.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor],
-        [self.imageView.heightAnchor constraintEqualToAnchor:self.scrollView.heightAnchor]
-    ]];
+    // Add tap gesture to scroll view for hiding overlay
+    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(scrollViewTapped:)];
+    [self.scrollView addGestureRecognizer:tapGesture];
 }
 
 - (void)setupOverlay {
     // Create semi-transparent overlay view
     self.overlayView = [[UIView alloc] init];
-    self.overlayView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.3];
+    self.overlayView.backgroundColor = [UIColor clearColor]; // Start transparent, we'll add background to individual elements
     self.overlayView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.overlayView];
     
-    // Instructions label
+    // Instructions label with background
     self.instructionLabel = [[UILabel alloc] init];
     self.instructionLabel.text = @"Pinch to zoom, drag to reposition\nTap confirm when you're happy with the result";
     self.instructionLabel.textColor = [UIColor whiteColor];
     self.instructionLabel.textAlignment = NSTextAlignmentCenter;
     self.instructionLabel.numberOfLines = 0;
     self.instructionLabel.font = [UIFont systemFontOfSize:16];
+    self.instructionLabel.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.7];
+    self.instructionLabel.layer.cornerRadius = 8;
+    self.instructionLabel.clipsToBounds = YES;
     self.instructionLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.overlayView addSubview:self.instructionLabel];
     
@@ -105,7 +104,7 @@
     self.cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
     [self.cancelButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    self.cancelButton.backgroundColor = [UIColor colorWithWhite:0.2 alpha:0.8];
+    self.cancelButton.backgroundColor = [UIColor colorWithWhite:0.3 alpha:0.9];
     self.cancelButton.layer.cornerRadius = 8;
     self.cancelButton.titleLabel.font = [UIFont boldSystemFontOfSize:16];
     [self.cancelButton addTarget:self action:@selector(cancelButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -116,7 +115,7 @@
     self.resetButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.resetButton setTitle:@"Reset" forState:UIControlStateNormal];
     [self.resetButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    self.resetButton.backgroundColor = [UIColor colorWithWhite:0.4 alpha:0.8];
+    self.resetButton.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.9];
     self.resetButton.layer.cornerRadius = 8;
     self.resetButton.titleLabel.font = [UIFont boldSystemFontOfSize:16];
     [self.resetButton addTarget:self action:@selector(resetButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -134,7 +133,7 @@
     self.confirmButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.overlayView addSubview:self.confirmButton];
     
-    // Layout overlay and buttons
+    // Layout overlay (full screen but doesn't intercept touches)
     [NSLayoutConstraint activateConstraints:@[
         [self.overlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.overlayView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -146,7 +145,8 @@
     [NSLayoutConstraint activateConstraints:@[
         [self.instructionLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:40],
         [self.instructionLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
-        [self.instructionLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20]
+        [self.instructionLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
+        [self.instructionLabel.heightAnchor constraintGreaterThanOrEqualToConstant:44]
     ]];
     
     // Buttons at bottom
@@ -166,44 +166,38 @@
         [self.confirmButton.widthAnchor constraintEqualToConstant:80],
         [self.confirmButton.heightAnchor constraintEqualToConstant:44]
     ]];
-    
-    // Add tap gesture to hide/show overlay
-    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(overlayTapped:)];
-    [self.overlayView addGestureRecognizer:tapGesture];
 }
 
 - (void)setupInitialZoom {
-    // Wait for layout to complete
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self resetZoomAndPosition];
-    });
-}
-
-- (void)resetZoomAndPosition {
-    if (!self.originalImage) return;
+    if (!self.originalImage || self.scrollView.bounds.size.width == 0) {
+        return;
+    }
     
     CGSize imageSize = self.originalImage.size;
     CGSize scrollViewSize = self.scrollView.bounds.size;
-    
-    if (scrollViewSize.width == 0 || scrollViewSize.height == 0) {
-        // Layout not ready yet
-        return;
-    }
     
     // Calculate scale to fit
     CGFloat scaleX = scrollViewSize.width / imageSize.width;
     CGFloat scaleY = scrollViewSize.height / imageSize.height;
     CGFloat minScale = MIN(scaleX, scaleY);
     
-    self.scrollView.minimumZoomScale = minScale * 0.5; // Allow zooming out a bit more
-    self.scrollView.maximumZoomScale = minScale * 3.0; // Allow zooming in
+    // Set zoom scales
+    self.scrollView.minimumZoomScale = minScale * 0.5; // Allow zooming out
+    self.scrollView.maximumZoomScale = minScale * 4.0; // Allow zooming in
     self.scrollView.zoomScale = minScale;
     
+    // Set image view frame based on image size and scale
+    CGSize scaledImageSize = CGSizeMake(imageSize.width * minScale, imageSize.height * minScale);
+    self.imageView.frame = CGRectMake(0, 0, scaledImageSize.width, scaledImageSize.height);
+    
+    // Update content size
+    self.scrollView.contentSize = scaledImageSize;
+    
     // Center the image
-    [self centerScrollViewContents];
+    [self centerImageInScrollView];
 }
 
-- (void)centerScrollViewContents {
+- (void)centerImageInScrollView {
     CGSize boundsSize = self.scrollView.bounds.size;
     CGRect contentsFrame = self.imageView.frame;
     
@@ -229,7 +223,7 @@
 }
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView {
-    [self centerScrollViewContents];
+    [self centerImageInScrollView];
 }
 
 #pragma mark - Actions
@@ -241,58 +235,34 @@
 }
 
 - (void)confirmButtonTapped:(id)sender {
-    UIImage *finalImage = [self captureCurrentView];
-    
+    // Instead of capturing current view, pass the original image and current transform information
     if ([self.delegate respondsToSelector:@selector(imagePreviewViewController:didFinishWithImage:transform:)]) {
-        [self.delegate imagePreviewViewController:self didFinishWithImage:finalImage transform:self.imageView.transform];
+        [self.delegate imagePreviewViewController:self didFinishWithImage:self.originalImage transform:CGAffineTransformIdentity];
     }
 }
 
 - (void)resetButtonTapped:(id)sender {
     [UIView animateWithDuration:0.3 animations:^{
-        [self resetZoomAndPosition];
+        [self setupInitialZoom];
     }];
 }
 
-- (void)overlayTapped:(UITapGestureRecognizer *)gesture {
+- (void)scrollViewTapped:(UITapGestureRecognizer *)gesture {
     // Toggle overlay visibility
     [UIView animateWithDuration:0.3 animations:^{
-        self.overlayView.alpha = self.overlayView.alpha > 0.5 ? 0.1 : 0.8;
+        if (self.overlayVisible) {
+            self.instructionLabel.alpha = 0.0;
+            self.cancelButton.alpha = 0.0;
+            self.resetButton.alpha = 0.0;
+            self.confirmButton.alpha = 0.0;
+        } else {
+            self.instructionLabel.alpha = 1.0;
+            self.cancelButton.alpha = 1.0;
+            self.resetButton.alpha = 1.0;
+            self.confirmButton.alpha = 1.0;
+        }
+        self.overlayVisible = !self.overlayVisible;
     }];
-}
-
-#pragma mark - Image Capture
-
-- (UIImage *)captureCurrentView {
-    // Create a new image that represents what will be shown as background
-    CGSize screenSize = [UIScreen mainScreen].bounds.size;
-    
-    UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0.0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    
-    // Fill with black background
-    CGContextSetFillColorWithColor(context, [UIColor blackColor].CGColor);
-    CGContextFillRect(context, CGRectMake(0, 0, screenSize.width, screenSize.height));
-    
-    // Calculate the visible area of the image
-    CGRect visibleRect = [self.scrollView convertRect:self.scrollView.bounds toView:self.imageView];
-    
-    // Draw the portion of the image that's visible
-    [self.originalImage drawAtPoint:CGPointMake(-visibleRect.origin.x, -visibleRect.origin.y)];
-    
-    UIImage *finalImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return finalImage;
-}
-
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    
-    // Update zoom when orientation changes
-    if (self.scrollView.zoomScale == self.scrollView.minimumZoomScale) {
-        [self resetZoomAndPosition];
-    }
 }
 
 // Support all orientations for preview
