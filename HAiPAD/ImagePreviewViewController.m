@@ -59,7 +59,8 @@
 
 - (void)setupScrollView {
     self.scrollView = [[UIScrollView alloc] initWithFrame:self.view.bounds];
-    self.scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | 
+                                       UIViewAutoresizingFlexibleHeight;
     self.scrollView.backgroundColor = [UIColor blackColor];
     self.scrollView.delegate = self;
     
@@ -135,7 +136,8 @@
 - (void)setupOverlay {
     // Create overlay view that doesn't block touch events
     self.overlayView = [[UIView alloc] initWithFrame:self.view.bounds];
-    self.overlayView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.overlayView.autoresizingMask = UIViewAutoresizingFlexibleWidth | 
+                                        UIViewAutoresizingFlexibleHeight;
     self.overlayView.backgroundColor = [UIColor clearColor];
     self.overlayView.userInteractionEnabled = YES;
     [self.view addSubview:self.overlayView];
