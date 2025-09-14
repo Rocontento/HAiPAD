@@ -87,6 +87,9 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
+    // Ensure we are the delegate for HomeAssistantClient when this view appears
+    self.homeAssistantClient.delegate = self;
+
     // Reload entity settings in case they changed
     [self loadEntitySettings];
 
@@ -97,6 +100,10 @@
     [self.collectionView.collectionViewLayout invalidateLayout];
 
     if (self.homeAssistantClient.isConnected) {
+        // Update status label immediately if already connected
+        self.statusLabel.text = @"Connected";
+        self.statusLabel.textColor = [UIColor greenColor];
+        
         [self.homeAssistantClient fetchStates];
     }
 }
