@@ -64,7 +64,7 @@
     // Add a subtle plus (+) icon in the center to indicate this is a drop zone
     UILabel *plusLabel = [[UILabel alloc] init];
     plusLabel.text = @"+";
-    plusLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
+    plusLabel.font = [UIFont systemFontOfSize:24]; // UIFontWeightLight not available in iOS 9.3.5
     plusLabel.textColor = [UIColor colorWithWhite:0.7 alpha:0.6];
     plusLabel.textAlignment = NSTextAlignmentCenter;
     plusLabel.translatesAutoresizingMaskIntoConstraints = NO;

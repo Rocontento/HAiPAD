@@ -14,7 +14,7 @@
 #import "WhiteboardGridLayout.h"
 #import "EmptyGridSlotView.h"
 
-@interface DashboardViewController ()
+@interface DashboardViewController () <EntityCardCellDelegate>
 @property (nonatomic, strong) NSArray *entities;
 @property (nonatomic, strong) NSArray *allEntities;
 @property (nonatomic, strong) NSSet *enabledEntityIds;
@@ -23,6 +23,7 @@
 @property (nonatomic, assign) NSInteger columnCount;
 @property (nonatomic, strong) WhiteboardGridLayout *whiteboardLayout;
 @property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
+@property (nonatomic, strong) NSMutableDictionary *entitySizes; // entity_id -> NSValue(CGSize)
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 // Drag and drop properties
 @property (nonatomic, assign) BOOL editingMode;
@@ -41,6 +42,7 @@
     self.allEntities = @[];
     self.enabledEntityIds = [NSSet set];
     self.entityPositions = [NSMutableDictionary dictionary];
+    self.entitySizes = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
 
@@ -71,6 +73,7 @@
     // Load entity settings and positions
     [self loadEntitySettings];
     [self loadEntityPositions];
+    [self loadEntitySizes];
 
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -109,8 +112,19 @@
         self.columnCount = 4; // Default to 4 columns for whiteboard
     }
 
+    // Load grid size preference  
+    NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
+    if (gridSize == 0) {
+        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+            gridSize = 6; // Default 6x6 for iPad
+        } else {
+            gridSize = 4; // Default 4x4 for iPhone
+        }
+    }
+
     // Update grid layout
     self.whiteboardLayout.gridColumns = self.columnCount;
+    self.whiteboardLayout.gridRows = gridSize;
 
     if (baseURL && accessToken) {
         [self.homeAssistantClient connectWithBaseURL:baseURL accessToken:accessToken];
@@ -168,6 +182,14 @@
 
     UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:entitiesVC];
     [self presentViewController:navController animated:YES completion:nil];
+}
+
+- (IBAction)editButtonTapped:(id)sender {
+    [self setEditingMode:!self.editingMode];
+    
+    // Update button title
+    NSString *buttonTitle = self.editingMode ? @"Done" : @"Edit";
+    [self.editButton setTitle:buttonTitle forState:UIControlStateNormal];
 }
 
 - (void)filterEntitiesBasedOnSettings {
@@ -314,6 +336,12 @@
 
     NSDictionary *entity = self.entities[indexPath.item];
     [cell configureWithEntity:entity];
+    
+    // Set up cell delegate and properties
+    cell.delegate = self;
+    NSString *entityId = entity[@"entity_id"];
+    cell.gridSize = [self getGridSizeForEntity:entityId defaultSize:CGSizeMake(1, 1)];
+    [cell setEditingMode:self.editingMode animated:NO];
 
     // Add target for info button
     [cell.infoButton addTarget:self action:@selector(infoButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -394,15 +422,21 @@
     self.whiteboardLayout = [[WhiteboardGridLayout alloc] init];
     self.whiteboardLayout.delegate = self;
 
-    // Configure grid based on device
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        self.whiteboardLayout.gridColumns = 4;
-        self.whiteboardLayout.gridRows = 6;
-    } else {
-        self.whiteboardLayout.gridColumns = 2;
-        self.whiteboardLayout.gridRows = 8;
+    // Load configuration for grid size
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSInteger columnCount = [defaults integerForKey:@"ha_column_count"];
+    NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
+    
+    if (columnCount == 0) {
+        columnCount = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
+    }
+    
+    if (gridSize == 0) {
+        gridSize = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
     }
 
+    self.whiteboardLayout.gridColumns = columnCount;
+    self.whiteboardLayout.gridRows = gridSize;
     self.whiteboardLayout.cellSpacing = 12.0;
     self.whiteboardLayout.gridInsets = UIEdgeInsetsMake(16, 16, 16, 16);
     self.whiteboardLayout.showEmptySlots = NO; // Only show during editing
@@ -426,9 +460,26 @@
     }
 }
 
+- (void)loadEntitySizes {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSDictionary *savedSizes = [defaults dictionaryForKey:@"ha_entity_sizes"];
+
+    if (savedSizes) {
+        self.entitySizes = [savedSizes mutableCopy];
+    } else {
+        self.entitySizes = [NSMutableDictionary dictionary];
+    }
+}
+
 - (void)saveEntityPositions {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setObject:self.entityPositions forKey:@"ha_entity_positions"];
+    [defaults synchronize];
+}
+
+- (void)saveEntitySizes {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:self.entitySizes forKey:@"ha_entity_sizes"];
     [defaults synchronize];
 }
 
@@ -450,6 +501,24 @@
     [self saveEntityPositions];
 }
 
+- (CGSize)getGridSizeForEntity:(NSString *)entityId defaultSize:(CGSize)defaultSize {
+    NSString *sizeString = self.entitySizes[entityId];
+    if (sizeString) {
+        CGSize size = CGSizeFromString(sizeString);
+        return size;
+    }
+
+    // If no saved size, store the default size
+    [self setGridSize:defaultSize forEntity:entityId];
+    return defaultSize;
+}
+
+- (void)setGridSize:(CGSize)size forEntity:(NSString *)entityId {
+    NSString *sizeString = NSStringFromCGSize(size);
+    self.entitySizes[entityId] = sizeString;
+    [self saveEntitySizes];
+}
+
 #pragma mark - WhiteboardGridLayoutDelegate
 
 - (CGPoint)gridPositionForItemAtIndexPath:(NSIndexPath *)indexPath {
@@ -469,7 +538,13 @@
 }
 
 - (CGSize)gridSizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    // All cards are 1x1 for now, but this allows for future expansion
+    if (indexPath.item < self.entities.count) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        
+        return [self getGridSizeForEntity:entityId defaultSize:CGSizeMake(1, 1)];
+    }
+    
     return CGSizeMake(1, 1);
 }
 
@@ -566,7 +641,7 @@
     UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];
 
     // Check if the new position is valid
-    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1)];
+    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1) excludingIndexPath:nil];
 
     if (positionIsValid) {
         // Update the entity position
@@ -647,9 +722,52 @@
 
     // Invalidate layout to show/hide empty slots
     [self.collectionView.collectionViewLayout invalidateLayout];
+    
+    // Update all visible cells
+    for (NSIndexPath *indexPath in [self.collectionView indexPathsForVisibleItems]) {
+        EntityCardCell *cell = (EntityCardCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
+        if ([cell isKindOfClass:[EntityCardCell class]]) {
+            [cell setEditingMode:editingMode animated:YES];
+        }
+    }
 
     // Optional: Add visual feedback for editing mode
     // Could change collection view background color slightly, etc.
+}
+
+#pragma mark - EntityCardCellDelegate
+
+- (void)entityCardCell:(EntityCardCell *)cell didRequestSizeChange:(CGSize)newSize {
+    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+    if (!indexPath || indexPath.item >= self.entities.count) return;
+    
+    NSDictionary *entity = self.entities[indexPath.item];
+    NSString *entityId = entity[@"entity_id"];
+    
+    // Save the new size
+    [self setGridSize:newSize forEntity:entityId];
+    
+    // Update the layout
+    [self.whiteboardLayout invalidateLayout];
+    [self.collectionView layoutIfNeeded];
+}
+
+- (void)entityCardCell:(EntityCardCell *)cell didBeginResizing:(UIGestureRecognizer *)gesture {
+    // Enter editing mode if not already
+    if (!self.editingMode) {
+        [self setEditingMode:YES];
+    }
+}
+
+- (void)entityCardCell:(EntityCardCell *)cell didUpdateResizing:(UIGestureRecognizer *)gesture {
+    // Update layout during resizing for real-time feedback
+    [self.whiteboardLayout invalidateLayout];
+}
+
+- (void)entityCardCell:(EntityCardCell *)cell didEndResizing:(UIGestureRecognizer *)gesture {
+    // Final layout update
+    [self.whiteboardLayout invalidateLayout];
+    [self.collectionView layoutIfNeeded];
 }
 
 #pragma mark - Action Methods

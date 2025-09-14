@@ -20,6 +20,12 @@
 // Called when user moves an item to a new grid position
 - (void)didMoveItemAtIndexPath:(NSIndexPath *)indexPath toGridPosition:(CGPoint)gridPosition;
 
+// Called when user resizes an item
+- (void)didResizeItemAtIndexPath:(NSIndexPath *)indexPath toSize:(CGSize)gridSize;
+
+// Check if a position and size is valid for placement
+- (BOOL)canPlaceItemAtGridPosition:(CGPoint)gridPosition withSize:(CGSize)gridSize excludingIndexPath:(NSIndexPath *)excludingIndexPath;
+
 @end
 
 @interface WhiteboardGridLayout : UICollectionViewLayout
@@ -40,6 +46,6 @@
 
 - (CGPoint)gridPositionFromPoint:(CGPoint)point;
 - (CGRect)frameForGridPosition:(CGPoint)gridPosition size:(CGSize)gridSize;
-- (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize;
+- (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize excludingIndexPath:(NSIndexPath *)excludingIndexPath;
 
 @end

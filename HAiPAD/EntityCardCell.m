@@ -8,6 +8,12 @@
 
 #import "EntityCardCell.h"
 
+@interface EntityCardCell ()
+@property (nonatomic, strong) UIPanGestureRecognizer *resizeGesture;
+@property (nonatomic, assign) CGPoint resizeStartSize;
+@property (nonatomic, assign) CGPoint resizeStartPoint;
+@end
+
 @implementation EntityCardCell
 
 - (void)awakeFromNib {
@@ -26,8 +32,8 @@
     // Set background color
     self.cardContainerView.backgroundColor = [UIColor whiteColor];
     
-    // Configure labels
-    self.nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    // Configure labels (iOS 9.3.5 compatible)
+    self.nameLabel.font = [UIFont systemFontOfSize:16]; // UIFontWeightMedium not available in iOS 9.3.5
     self.stateLabel.font = [UIFont systemFontOfSize:14];
     self.stateLabel.textColor = [UIColor grayColor];
     
@@ -35,6 +41,164 @@
     self.infoButton.layer.cornerRadius = 10.0;
     self.infoButton.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     [self.infoButton setTitleColor:[UIColor grayColor] forState:UIControlStateNormal];
+    
+    // Initialize properties
+    self.gridSize = CGSizeMake(1, 1); // Default 1x1 grid size
+    self.editingMode = NO;
+    
+    // Create resize handle
+    [self createResizeHandle];
+}
+
+- (void)createResizeHandle {
+    // Create resize handle view
+    self.resizeHandle = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 24, 24)];
+    self.resizeHandle.backgroundColor = [UIColor colorWithWhite:0.9 alpha:0.95];
+    self.resizeHandle.layer.cornerRadius = 12.0;
+    self.resizeHandle.layer.borderWidth = 1.5;
+    self.resizeHandle.layer.borderColor = [UIColor colorWithWhite:0.7 alpha:1.0].CGColor;
+    self.resizeHandle.hidden = YES;
+    
+    // Add curved handle lines (similar to iOS 18)
+    [self addResizeHandleIndicator];
+    
+    // Add to card container
+    [self.cardContainerView addSubview:self.resizeHandle];
+    
+    // Position in bottom right corner
+    self.resizeHandle.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.resizeHandle.trailingAnchor constraintEqualToAnchor:self.cardContainerView.trailingAnchor constant:-4],
+        [self.resizeHandle.bottomAnchor constraintEqualToAnchor:self.cardContainerView.bottomAnchor constant:-4],
+        [self.resizeHandle.widthAnchor constraintEqualToConstant:24],
+        [self.resizeHandle.heightAnchor constraintEqualToConstant:24]
+    ]];
+    
+    // Add pan gesture for resizing
+    self.resizeGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleResizeGesture:)];
+    [self.resizeHandle addGestureRecognizer:self.resizeGesture];
+}
+
+- (void)addResizeHandleIndicator {
+    // Create curved lines similar to iOS 18 widget resize handle
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    
+    // Bottom curved line
+    [path moveToPoint:CGPointMake(6, 18)];
+    [path addQuadCurveToPoint:CGPointMake(18, 18) controlPoint:CGPointMake(12, 16)];
+    
+    // Right curved line
+    [path moveToPoint:CGPointMake(18, 6)];
+    [path addQuadCurveToPoint:CGPointMake(18, 18) controlPoint:CGPointMake(16, 12)];
+    
+    CAShapeLayer *shapeLayer = [CAShapeLayer layer];
+    shapeLayer.path = path.CGPath;
+    shapeLayer.strokeColor = [UIColor colorWithWhite:0.6 alpha:1.0].CGColor;
+    shapeLayer.lineWidth = 1.5;
+    shapeLayer.fillColor = [UIColor clearColor].CGColor;
+    shapeLayer.lineCap = kCALineCapRound;
+    
+    [self.resizeHandle.layer addSublayer:shapeLayer];
+}
+
+- (void)handleResizeGesture:(UIPanGestureRecognizer *)gesture {
+    switch (gesture.state) {
+        case UIGestureRecognizerStateBegan:
+            self.resizeStartPoint = [gesture locationInView:self.superview];
+            self.resizeStartSize = CGPointMake(self.gridSize.width, self.gridSize.height);
+            
+            if ([self.delegate respondsToSelector:@selector(entityCardCell:didBeginResizing:)]) {
+                [self.delegate entityCardCell:self didBeginResizing:gesture];
+            }
+            break;
+            
+        case UIGestureRecognizerStateChanged: {
+            CGPoint currentPoint = [gesture locationInView:self.superview];
+            CGPoint translation = CGPointMake(currentPoint.x - self.resizeStartPoint.x,
+                                           currentPoint.y - self.resizeStartPoint.y);
+            
+            // Calculate new grid size based on translation
+            // Assume each grid cell is approximately 100 points
+            CGFloat gridCellSize = 100.0;
+            NSInteger newWidth = MAX(1, self.resizeStartSize.x + (NSInteger)(translation.x / gridCellSize));
+            NSInteger newHeight = MAX(1, self.resizeStartSize.y + (NSInteger)(translation.y / gridCellSize));
+            
+            // Limit maximum size to reasonable bounds
+            newWidth = MIN(newWidth, 3);
+            newHeight = MIN(newHeight, 3);
+            
+            CGSize newGridSize = CGSizeMake(newWidth, newHeight);
+            
+            if (!CGSizeEqualToSize(self.gridSize, newGridSize)) {
+                self.gridSize = newGridSize;
+                
+                if ([self.delegate respondsToSelector:@selector(entityCardCell:didUpdateResizing:)]) {
+                    [self.delegate entityCardCell:self didUpdateResizing:gesture];
+                }
+            }
+            break;
+        }
+            
+        case UIGestureRecognizerStateEnded:
+        case UIGestureRecognizerStateCancelled:
+            if ([self.delegate respondsToSelector:@selector(entityCardCell:didEndResizing:)]) {
+                [self.delegate entityCardCell:self didEndResizing:gesture];
+            }
+            
+            if ([self.delegate respondsToSelector:@selector(entityCardCell:didRequestSizeChange:)]) {
+                [self.delegate entityCardCell:self didRequestSizeChange:self.gridSize];
+            }
+            break;
+            
+        default:
+            break;
+    }
+}
+
+- (void)setEditingMode:(BOOL)editingMode animated:(BOOL)animated {
+    if (_editingMode == editingMode) return;
+    
+    _editingMode = editingMode;
+    
+    if (animated) {
+        [UIView animateWithDuration:0.3 animations:^{
+            self.resizeHandle.alpha = editingMode ? 1.0 : 0.0;
+        } completion:^(BOOL finished) {
+            self.resizeHandle.hidden = !editingMode;
+        }];
+        
+        if (editingMode) {
+            self.resizeHandle.hidden = NO;
+            [self startWiggleAnimation];
+        } else {
+            [self stopWiggleAnimation];
+        }
+    } else {
+        self.resizeHandle.hidden = !editingMode;
+        self.resizeHandle.alpha = editingMode ? 1.0 : 0.0;
+        
+        if (editingMode) {
+            [self startWiggleAnimation];
+        } else {
+            [self stopWiggleAnimation];
+        }
+    }
+}
+
+- (void)startWiggleAnimation {
+    // Create subtle wiggle animation similar to iOS widgets
+    CAKeyframeAnimation *wiggleAnimation = [CAKeyframeAnimation animationWithKeyPath:@"transform.rotation"];
+    wiggleAnimation.values = @[@0.0, @(-M_PI/180), @0.0, @(M_PI/180), @0.0];
+    wiggleAnimation.keyTimes = @[@0.0, @0.25, @0.5, @0.75, @1.0];
+    wiggleAnimation.duration = 1.5;
+    wiggleAnimation.repeatCount = HUGE_VALF;
+    wiggleAnimation.autoreverses = NO;
+    
+    [self.cardContainerView.layer addAnimation:wiggleAnimation forKey:@"wiggle"];
+}
+
+- (void)stopWiggleAnimation {
+    [self.cardContainerView.layer removeAnimationForKey:@"wiggle"];
 }
 
 - (void)prepareForReuse {
@@ -47,6 +211,10 @@
     self.nameLabel.text = @"";
     self.stateLabel.text = @"";
     self.nameLabel.textColor = [UIColor darkTextColor];
+    
+    // Reset resize properties
+    self.gridSize = CGSizeMake(1, 1);
+    [self setEditingMode:NO animated:NO];
 }
 
 - (void)configureWithEntity:(NSDictionary *)entity {
