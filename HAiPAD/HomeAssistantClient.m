@@ -524,6 +524,13 @@
         self.webSocketReconnectDelay = 1.0; // Reset delay
         [self subscribeToStateChanges];
         [self startWebSocketHeartbeat];
+        
+        // Notify delegate of WebSocket connection
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(homeAssistantClientWebSocketDidConnect:)]) {
+                [self.delegate homeAssistantClientWebSocketDidConnect:self];
+            }
+        });
     } else if ([type isEqualToString:@"auth_invalid"]) {
         NSLog(@"WebSocket authentication failed");
         [self disconnectWebSocket];
@@ -594,21 +601,45 @@
     NSDictionary *event = eventData[@"event"];
     if (!event) return;
     
-    NSDictionary *newState = event[@"data"][@"new_state"];
+    NSDictionary *data = event[@"data"];
+    if (!data) return;
+    
+    NSDictionary *newState = data[@"new_state"];
+    NSDictionary *oldState = data[@"old_state"];
     if (!newState) return;
     
-    // Update internal state tracking
     NSString *entityId = newState[@"entity_id"];
-    if (entityId) {
-        self.entitiesState[entityId] = newState;
+    if (!entityId) return;
+    
+    // Validate that this state change makes sense
+    NSDictionary *currentState = self.entitiesState[entityId];
+    if (currentState && oldState) {
+        NSString *currentStateValue = currentState[@"state"];
+        NSString *oldStateValue = oldState[@"state"];
         
-        // Notify delegate of the individual state change
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didReceiveStateChange:)]) {
-                [self.delegate homeAssistantClient:self didReceiveStateChange:newState];
-            }
-        });
+        // If the old state doesn't match our current state, log a warning
+        // This could indicate missed updates or synchronization issues
+        if (currentStateValue && ![currentStateValue isEqualToString:oldStateValue]) {
+            NSLog(@"WebSocket state change validation warning for %@: expected old state '%@', got '%@'", 
+                  entityId, currentStateValue, oldStateValue);
+        }
     }
+    
+    // Update internal state tracking
+    self.entitiesState[entityId] = newState;
+    
+    // Clear any optimistic update for this entity since we got a real state change
+    NSDictionary *optimisticState = [self getOptimisticStateForEntity:entityId];
+    if (optimisticState) {
+        [self clearOptimisticStateForEntity:entityId];
+    }
+    
+    // Notify delegate of the individual state change
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didReceiveStateChange:)]) {
+            [self.delegate homeAssistantClient:self didReceiveStateChange:newState];
+        }
+    });
 }
 
 - (void)updateEntitiesState:(NSArray *)states {
@@ -660,6 +691,13 @@
         [self stopWebSocketHeartbeat];
         self.webSocketConnected = NO;
         self.webSocketTask = nil;
+        
+        // Notify delegate of WebSocket disconnection
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.delegate respondsToSelector:@selector(homeAssistantClientWebSocketDidDisconnect:)]) {
+                [self.delegate homeAssistantClientWebSocketDidDisconnect:self];
+            }
+        });
         
         // Try to reconnect if we were previously connected and it wasn't a normal closure
         if (self.isConnected && closeCode != NSURLSessionWebSocketCloseCodeNormalClosure) {
@@ -769,6 +807,21 @@
     if (self.isConnected) {
         [self scheduleWebSocketReconnect];
     }
+}
+
+#pragma mark - Optimistic State Management
+
+- (NSDictionary *)getOptimisticStateForEntity:(NSString *)entityId {
+    // Return any optimistic state we might be tracking
+    // For now, we don't track optimistic states in the client
+    // The UI layer handles this
+    return nil;
+}
+
+- (void)clearOptimisticStateForEntity:(NSString *)entityId {
+    // Clear any optimistic state tracking
+    // The UI layer handles optimistic updates
+    NSLog(@"Clearing optimistic state for entity: %@", entityId);
 }
 
 @end

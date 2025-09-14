@@ -116,6 +116,12 @@
     // Add refresh control to collection view
     [self.collectionView addSubview:self.refreshControl];
     [self.collectionView sendSubviewToBack:self.refreshControl];
+    
+    // Listen for app becoming active to ensure WebSocket reconnection
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(applicationDidBecomeActive:)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -647,7 +653,8 @@
 #pragma mark - HomeAssistantClientDelegate
 
 - (void)homeAssistantClientDidConnect:(HomeAssistantClient *)client {
-    self.statusLabel.text = @"Connected";
+    NSString *connectionType = client.isWebSocketConnected ? @"Connected (WebSocket)" : @"Connected (HTTP)";
+    self.statusLabel.text = connectionType;
     self.statusLabel.textColor = [UIColor greenColor];
 }
 
@@ -781,6 +788,33 @@
         [self revertOptimisticUpdateForEntity:entityId toState:originalState];
         [self.optimisticUpdates removeObjectForKey:entityId];
     }
+}
+
+- (void)homeAssistantClientWebSocketDidConnect:(HomeAssistantClient *)client {
+    NSLog(@"WebSocket connected - updating status display");
+    self.statusLabel.text = @"Connected (WebSocket)";
+    self.statusLabel.textColor = [UIColor greenColor];
+}
+
+- (void)homeAssistantClientWebSocketDidDisconnect:(HomeAssistantClient *)client {
+    NSLog(@"WebSocket disconnected - falling back to HTTP polling");
+    if (client.isConnected) {
+        self.statusLabel.text = @"Connected (HTTP)";
+        self.statusLabel.textColor = [UIColor orangeColor];
+    }
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    NSLog(@"App became active - checking WebSocket connection");
+    
+    // If we're connected to HA but WebSocket is not connected, try to reconnect
+    if (self.homeAssistantClient.isConnected && !self.homeAssistantClient.isWebSocketConnected) {
+        [self.homeAssistantClient connectWebSocket];
+    }
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)revertOptimisticUpdateForEntity:(NSString *)entityId toState:(NSString *)originalState {

@@ -19,6 +19,8 @@
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStateChange:(NSDictionary *)stateChange;
 - (void)homeAssistantClient:(HomeAssistantClient *)client serviceCallDidSucceedForEntity:(NSString *)entityId;
 - (void)homeAssistantClient:(HomeAssistantClient *)client serviceCallDidFailForEntity:(NSString *)entityId withError:(NSError *)error;
+- (void)homeAssistantClientWebSocketDidConnect:(HomeAssistantClient *)client;
+- (void)homeAssistantClientWebSocketDidDisconnect:(HomeAssistantClient *)client;
 @end
 
 @interface HomeAssistantClient : NSObject
