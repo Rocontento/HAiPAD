@@ -287,6 +287,12 @@
         return;
     }
     
+    // Validate the image before processing
+    if (![self isValidImageForBackground:self.backgroundImage]) {
+        NSLog(@"Dashboard: Invalid background image detected");
+        return;
+    }
+    
     NSLog(@"Dashboard: Applying background image with size: %@", NSStringFromCGSize(self.backgroundImage.size));
     
     // Remove any existing background image views to avoid duplicates
@@ -309,37 +315,45 @@
     
     NSLog(@"Dashboard: Loaded positioning - scale: %f, offset: (%f, %f)", savedScale, savedOffsetX, savedOffsetY);
     
-    // Create background image view
+    // Create background image view with proper settings for iOS-like behavior
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
-    backgroundImageView.clipsToBounds = YES;
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill; // Always fill screen like iOS wallpapers
+    backgroundImageView.clipsToBounds = YES; // Ensure proper clipping
     backgroundImageView.tag = 999;
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Get current view size
+    // Get current view size and image size
     CGSize viewSize = self.view.bounds.size;
     CGSize imageSize = self.backgroundImage.size;
+    
+    // Validate view and image sizes
+    if (viewSize.width <= 0 || viewSize.height <= 0 || imageSize.width <= 0 || imageSize.height <= 0) {
+        NSLog(@"Dashboard: Invalid sizes - view: %@, image: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
+        // Set frame to fill view as fallback
+        backgroundImageView.frame = self.view.bounds;
+        return;
+    }
     
     NSLog(@"Dashboard: View size: %@, Image size: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
     
     if (savedScale > 0) {
-        // Use saved positioning from preview
+        // Use saved positioning from preview controller
         
-        // Calculate base scale that fits image to screen
+        // Calculate the scale that would make the image fill the screen (like iOS wallpapers)
         CGFloat scaleX = viewSize.width / imageSize.width;
         CGFloat scaleY = viewSize.height / imageSize.height;
-        CGFloat fitScale = MIN(scaleX, scaleY);
+        CGFloat fillScale = MAX(scaleX, scaleY); // Always use MAX to ensure full coverage
         
-        // Apply user's scale adjustment
-        CGFloat finalScale = fitScale * savedScale;
+        // Apply user's scale adjustment to the fill scale
+        CGFloat finalScale = fillScale * savedScale;
         CGSize scaledSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
         
         // Calculate center position
         CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
         
-        // Apply saved offset
+        // Apply saved offset (scale offset by final scale for consistency)
         center.x += savedOffsetX * finalScale;
         center.y += savedOffsetY * finalScale;
         
@@ -351,29 +365,38 @@
             scaledSize.height
         );
         
-        NSLog(@"Dashboard: Applied saved positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+        NSLog(@"Dashboard: Applied saved positioning - scale: %.3f, final frame: %@", finalScale, NSStringFromCGRect(backgroundImageView.frame));
         
     } else {
-        // No saved positioning, use default: fill entire screen
+        // No saved positioning - implement iOS-like default behavior
         
-        // Calculate scale to fill the entire view (may crop)
+        // Calculate scale to fill the entire view (like ScaleAspectFill)
         CGFloat scaleX = viewSize.width / imageSize.width;
         CGFloat scaleY = viewSize.height / imageSize.height;
-        CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to fill entire screen
+        CGFloat fillScale = MAX(scaleX, scaleY); // Always use MAX to ensure complete coverage
         
+        // Calculate scaled size
         CGSize scaledSize = CGSizeMake(imageSize.width * fillScale, imageSize.height * fillScale);
         
-        // Center the image
+        // Center the image perfectly (this is key for iOS-like behavior)
         CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
         
-        backgroundImageView.frame = CGRectMake(
+        // Calculate frame with perfect centering
+        CGRect imageFrame = CGRectMake(
             center.x - scaledSize.width / 2.0,
             center.y - scaledSize.height / 2.0,
             scaledSize.width,
             scaledSize.height
         );
         
-        NSLog(@"Dashboard: Applied default positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
+        backgroundImageView.frame = imageFrame;
+        
+        NSLog(@"Dashboard: Applied iOS-like default positioning - scale: %.3f, frame: %@", fillScale, NSStringFromCGRect(imageFrame));
+        
+        // Log aspect ratios for debugging
+        CGFloat viewAspectRatio = viewSize.width / viewSize.height;
+        CGFloat imageAspectRatio = imageSize.width / imageSize.height;
+        NSLog(@"Dashboard: Aspect ratios - view: %.3f, image: %.3f", viewAspectRatio, imageAspectRatio);
     }
     
     // Ensure main content has transparent background to show image
@@ -384,6 +407,29 @@
     
     // Update status bar appearance for better visibility
     [self updateStatusBarAppearance];
+}
+
+#pragma mark - Helper Methods for Background Image
+
+- (BOOL)isValidImageForBackground:(UIImage *)image {
+    if (!image) return NO;
+    
+    CGSize imageSize = image.size;
+    
+    // Check for valid dimensions
+    if (imageSize.width <= 0 || imageSize.height <= 0) return NO;
+    
+    // Check for reasonable dimensions (not too extreme)
+    if (imageSize.width > 10000 || imageSize.height > 10000) return NO;
+    
+    // Check for extreme aspect ratios that might cause issues
+    CGFloat aspectRatio = imageSize.width / imageSize.height;
+    if (aspectRatio > 10.0 || aspectRatio < 0.1) {
+        NSLog(@"Dashboard: Warning - extreme aspect ratio detected: %.3f", aspectRatio);
+        // Still allow it, but log the warning
+    }
+    
+    return YES;
 }
 
 - (void)updateStatusBarAppearance {
