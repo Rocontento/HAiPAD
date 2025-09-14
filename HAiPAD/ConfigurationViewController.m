@@ -62,21 +62,8 @@
         [self.gridSizeSlider addTarget:self action:@selector(gridSizeSliderChanged:) forControlEvents:UIControlEventValueChanged];
     }
     
-    // Configure grid width slider (new)
-    if (self.gridWidthSlider) {
-        self.gridWidthSlider.minimumValue = 2.0;
-        self.gridWidthSlider.maximumValue = 8.0;
-        self.gridWidthSlider.continuous = YES;
-        [self.gridWidthSlider addTarget:self action:@selector(gridWidthSliderChanged:) forControlEvents:UIControlEventValueChanged];
-    }
-    
-    // Configure grid height slider (new)
-    if (self.gridHeightSlider) {
-        self.gridHeightSlider.minimumValue = 2.0;
-        self.gridHeightSlider.maximumValue = 10.0;
-        self.gridHeightSlider.continuous = YES;
-        [self.gridHeightSlider addTarget:self action:@selector(gridHeightSliderChanged:) forControlEvents:UIControlEventValueChanged];
-    }
+    // Create new grid width and height controls programmatically
+    [self createSeparateGridControls];
 }
 
 - (void)loadConfiguration {
@@ -101,7 +88,7 @@
     // Set segmented control to correct index (1-4 columns maps to indices 0-3)
     self.columnsSegmentedControl.selectedSegmentIndex = columnCount - 1;
     
-    // Load grid size preference
+    // Load grid size preference (legacy - kept for backward compatibility with existing installations)
     if (self.gridSizeSlider && self.gridSizeLabel) {
         NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
         if (gridSize == 0) {
@@ -129,6 +116,8 @@
         
         self.gridWidthSlider.value = gridWidth;
         [self updateGridWidthLabel];
+    } else {
+        // If controls are created programmatically, they will be loaded in createSeparateGridControls
     }
     
     // Load grid height preference (new)
@@ -144,6 +133,8 @@
         
         self.gridHeightSlider.value = gridHeight;
         [self updateGridHeightLabel];
+    } else {
+        // If controls are created programmatically, they will be loaded in createSeparateGridControls
     }
 }
 
@@ -361,6 +352,84 @@
         NSInteger gridHeight = (NSInteger)self.gridHeightSlider.value;
         self.gridHeightLabel.text = [NSString stringWithFormat:@"Grid Height: %ld rows", (long)gridHeight];
     }
+}
+
+#pragma mark - UI Creation Methods
+
+- (void)createSeparateGridControls {
+    // Create separate grid controls below the original grid slider
+    UIView *parentView = self.gridSizeSlider.superview;
+    if (!parentView) return;
+    
+    // Create grid width label
+    self.gridWidthLabel = [[UILabel alloc] init];
+    self.gridWidthLabel.text = @"Grid Width: 4 columns";
+    self.gridWidthLabel.font = [UIFont systemFontOfSize:17];
+    self.gridWidthLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [parentView addSubview:self.gridWidthLabel];
+    
+    // Create grid width slider
+    self.gridWidthSlider = [[UISlider alloc] init];
+    self.gridWidthSlider.minimumValue = 2.0;
+    self.gridWidthSlider.maximumValue = 8.0;
+    self.gridWidthSlider.continuous = YES;
+    self.gridWidthSlider.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.gridWidthSlider addTarget:self action:@selector(gridWidthSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    [parentView addSubview:self.gridWidthSlider];
+    
+    // Create grid height label
+    self.gridHeightLabel = [[UILabel alloc] init];
+    self.gridHeightLabel.text = @"Grid Height: 6 rows";
+    self.gridHeightLabel.font = [UIFont systemFontOfSize:17];
+    self.gridHeightLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [parentView addSubview:self.gridHeightLabel];
+    
+    // Create grid height slider
+    self.gridHeightSlider = [[UISlider alloc] init];
+    self.gridHeightSlider.minimumValue = 2.0;
+    self.gridHeightSlider.maximumValue = 10.0;
+    self.gridHeightSlider.continuous = YES;
+    self.gridHeightSlider.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.gridHeightSlider addTarget:self action:@selector(gridHeightSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    [parentView addSubview:self.gridHeightSlider];
+    
+    // Add constraints
+    [NSLayoutConstraint activateConstraints:@[
+        // Grid width label constraints
+        [self.gridWidthLabel.topAnchor constraintEqualToAnchor:self.gridSizeSlider.bottomAnchor constant:30],
+        [self.gridWidthLabel.leadingAnchor constraintEqualToAnchor:parentView.leadingAnchor constant:20],
+        
+        // Grid width slider constraints
+        [self.gridWidthSlider.topAnchor constraintEqualToAnchor:self.gridWidthLabel.bottomAnchor constant:8],
+        [self.gridWidthSlider.leadingAnchor constraintEqualToAnchor:parentView.leadingAnchor constant:20],
+        [self.gridWidthSlider.trailingAnchor constraintEqualToAnchor:parentView.trailingAnchor constant:-20],
+        
+        // Grid height label constraints
+        [self.gridHeightLabel.topAnchor constraintEqualToAnchor:self.gridWidthSlider.bottomAnchor constant:20],
+        [self.gridHeightLabel.leadingAnchor constraintEqualToAnchor:parentView.leadingAnchor constant:20],
+        
+        // Grid height slider constraints
+        [self.gridHeightSlider.topAnchor constraintEqualToAnchor:self.gridHeightLabel.bottomAnchor constant:8],
+        [self.gridHeightSlider.leadingAnchor constraintEqualToAnchor:parentView.leadingAnchor constant:20],
+        [self.gridHeightSlider.trailingAnchor constraintEqualToAnchor:parentView.trailingAnchor constant:-20],
+    ]];
+    
+    // Load initial values
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSInteger gridWidth = [defaults integerForKey:@"ha_grid_width"];
+    NSInteger gridHeight = [defaults integerForKey:@"ha_grid_height"];
+    
+    if (gridWidth == 0) {
+        gridWidth = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 4 : 2;
+    }
+    if (gridHeight == 0) {
+        gridHeight = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 6 : 4;
+    }
+    
+    self.gridWidthSlider.value = gridWidth;
+    self.gridHeightSlider.value = gridHeight;
+    [self updateGridWidthLabel];
+    [self updateGridHeightLabel];
 }
 
 @end

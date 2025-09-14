@@ -18,10 +18,10 @@
 @property (weak, nonatomic) IBOutlet UISegmentedControl *columnsSegmentedControl;
 @property (weak, nonatomic) IBOutlet UISlider *gridSizeSlider;
 @property (weak, nonatomic) IBOutlet UILabel *gridSizeLabel;
-@property (weak, nonatomic) IBOutlet UISlider *gridWidthSlider;
-@property (weak, nonatomic) IBOutlet UISlider *gridHeightSlider;
-@property (weak, nonatomic) IBOutlet UILabel *gridWidthLabel;
-@property (weak, nonatomic) IBOutlet UILabel *gridHeightLabel;
+@property (strong, nonatomic) UISlider *gridWidthSlider;
+@property (strong, nonatomic) UISlider *gridHeightSlider;
+@property (strong, nonatomic) UILabel *gridWidthLabel;
+@property (strong, nonatomic) UILabel *gridHeightLabel;
 
 - (IBAction)saveButtonTapped:(id)sender;
 - (IBAction)testButtonTapped:(id)sender;
