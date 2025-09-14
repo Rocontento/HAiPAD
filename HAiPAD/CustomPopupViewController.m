@@ -253,10 +253,20 @@
     NSString *entityId = self.entity[@"entity_id"] ?: @"";
     NSString *state = self.entity[@"state"] ?: @"Unknown";
     
+    // Skip unavailable states
+    if ([state isEqualToString:@"unavailable"] || [state isEqualToString:@"unknown"]) {
+        return @"N/A";
+    }
+    
     // Temperature sensors
     if ([entityId containsString:@"temperature"] || 
         [attributes[@"device_class"] isEqualToString:@"temperature"]) {
         NSString *unit = attributes[@"unit_of_measurement"] ?: @"°C";
+        // Handle numeric values properly
+        if (![state isEqualToString:@""] && [self isNumericString:state]) {
+            float tempValue = [state floatValue];
+            return [NSString stringWithFormat:@"%.1f%@", tempValue, unit];
+        }
         return [NSString stringWithFormat:@"%@%@", state, unit];
     }
     
@@ -264,6 +274,10 @@
     if ([entityId containsString:@"humidity"] || 
         [attributes[@"device_class"] isEqualToString:@"humidity"]) {
         NSString *unit = attributes[@"unit_of_measurement"] ?: @"%";
+        if ([self isNumericString:state]) {
+            float humidityValue = [state floatValue];
+            return [NSString stringWithFormat:@"%.1f%@", humidityValue, unit];
+        }
         return [NSString stringWithFormat:@"%@%@", state, unit];
     }
     
@@ -271,6 +285,10 @@
     if ([entityId containsString:@"battery"] || 
         [attributes[@"device_class"] isEqualToString:@"battery"]) {
         NSString *unit = attributes[@"unit_of_measurement"] ?: @"%";
+        if ([self isNumericString:state]) {
+            int batteryValue = [state intValue];
+            return [NSString stringWithFormat:@"%d%@", batteryValue, unit];
+        }
         return [NSString stringWithFormat:@"%@%@", state, unit];
     }
     
@@ -303,7 +321,14 @@
     // Sensor entities with numeric values
     if ([entityId hasPrefix:@"sensor."]) {
         NSString *unit = attributes[@"unit_of_measurement"];
-        if (unit) {
+        if (unit && [self isNumericString:state]) {
+            // Handle different numeric formats
+            if ([unit containsString:@"%"]) {
+                float value = [state floatValue];
+                return [NSString stringWithFormat:@"%.1f%@", value, unit];
+            }
+            return [NSString stringWithFormat:@"%@%@", state, unit];
+        } else if (unit) {
             return [NSString stringWithFormat:@"%@%@", state, unit];
         }
         return state;
@@ -311,6 +336,15 @@
     
     // For all other entities, just show the state
     return [state capitalizedString];
+}
+
+// Helper method to check if a string represents a numeric value
+- (BOOL)isNumericString:(NSString *)string {
+    if (!string || string.length == 0) return NO;
+    
+    NSCharacterSet *numericSet = [NSCharacterSet characterSetWithCharactersInString:@"0123456789.-"];
+    NSCharacterSet *stringSet = [NSCharacterSet characterSetWithCharactersInString:string];
+    return [numericSet isSupersetOfSet:stringSet];
 }
 
 - (void)populateAttributesContainer {
@@ -358,26 +392,16 @@
     
     UIView *lastView = attributesTitle;
     
-    // Add key attributes (skip friendly_name as it's already the title)
-    NSArray *importantKeys = @[@"brightness", @"color_temp", @"unit_of_measurement", @"device_class", @"battery"];
+    // Define priority order for attributes based on entity type
+    NSArray *priorityKeys = [self getPriorityAttributeKeys];
+    NSMutableArray *displayedKeys = [NSMutableArray array];
     
-    for (NSString *key in importantKeys) {
+    // Add priority attributes first
+    for (NSString *key in priorityKeys) {
         id value = attributes[key];
         if (value && ![key isEqualToString:@"friendly_name"]) {
-            UILabel *attributeLabel = [[UILabel alloc] init];
-            attributeLabel.font = [UIFont systemFontOfSize:12];
-            attributeLabel.textColor = [UIColor darkGrayColor];
-            attributeLabel.numberOfLines = 0;
-            attributeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-            
-            NSString *displayValue = [NSString stringWithFormat:@"%@", value];
-            if ([key isEqualToString:@"brightness"] && [value isKindOfClass:[NSNumber class]]) {
-                // Convert brightness from 0-255 to 0-100%
-                int percentage = (int)((((NSNumber *)value).floatValue / 255.0) * 100);
-                displayValue = [NSString stringWithFormat:@"%d%%", percentage];
-            }
-            
-            attributeLabel.text = [NSString stringWithFormat:@"%@: %@", [key capitalizedString], displayValue];
+            [displayedKeys addObject:key];
+            UILabel *attributeLabel = [self createAttributeLabelForKey:key value:value];
             [self.attributesContainer addSubview:attributeLabel];
             
             [NSLayoutConstraint activateConstraints:@[
@@ -390,8 +414,112 @@
         }
     }
     
+    // Add other relevant attributes (limit to avoid cluttering)
+    NSInteger maxAdditionalAttributes = 3;
+    NSInteger addedCount = 0;
+    
+    for (NSString *key in attributes) {
+        if (![displayedKeys containsObject:key] && 
+            ![key isEqualToString:@"friendly_name"] && 
+            addedCount < maxAdditionalAttributes) {
+            
+            id value = attributes[key];
+            if (value && [self shouldDisplayAttribute:key value:value]) {
+                [displayedKeys addObject:key];
+                UILabel *attributeLabel = [self createAttributeLabelForKey:key value:value];
+                [self.attributesContainer addSubview:attributeLabel];
+                
+                [NSLayoutConstraint activateConstraints:@[
+                    [attributeLabel.topAnchor constraintEqualToAnchor:lastView.bottomAnchor constant:6.0],
+                    [attributeLabel.leadingAnchor constraintEqualToAnchor:self.attributesContainer.leadingAnchor constant:12.0],
+                    [attributeLabel.trailingAnchor constraintEqualToAnchor:self.attributesContainer.trailingAnchor constant:-12.0]
+                ]];
+                
+                lastView = attributeLabel;
+                addedCount++;
+            }
+        }
+    }
+    
     // Add bottom padding
     [lastView.bottomAnchor constraintEqualToAnchor:self.attributesContainer.bottomAnchor constant:-12.0].active = YES;
+}
+
+- (NSArray *)getPriorityAttributeKeys {
+    NSString *entityId = self.entity[@"entity_id"] ?: @"";
+    
+    if ([entityId hasPrefix:@"light."]) {
+        return @[@"brightness", @"color_temp", @"rgb_color", @"supported_features"];
+    } else if ([entityId hasPrefix:@"climate."]) {
+        return @[@"current_temperature", @"temperature", @"temperature_unit", @"hvac_modes"];
+    } else if ([entityId hasPrefix:@"sensor."]) {
+        return @[@"unit_of_measurement", @"device_class", @"state_class"];
+    } else if ([entityId hasPrefix:@"switch."] || [entityId hasPrefix:@"binary_sensor."]) {
+        return @[@"device_class", @"device_id"];
+    }
+    
+    // Default priority for all entities
+    return @[@"unit_of_measurement", @"device_class", @"brightness", @"temperature"];
+}
+
+- (UILabel *)createAttributeLabelForKey:(NSString *)key value:(id)value {
+    UILabel *attributeLabel = [[UILabel alloc] init];
+    attributeLabel.font = [UIFont systemFontOfSize:12];
+    attributeLabel.textColor = [UIColor darkGrayColor];
+    attributeLabel.numberOfLines = 0;
+    attributeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    NSString *displayValue = [self formatAttributeValue:value forKey:key];
+    NSString *displayKey = [self formatAttributeKey:key];
+    
+    attributeLabel.text = [NSString stringWithFormat:@"%@: %@", displayKey, displayValue];
+    return attributeLabel;
+}
+
+- (NSString *)formatAttributeKey:(NSString *)key {
+    // Convert snake_case to Title Case
+    NSArray *components = [key componentsSeparatedByString:@"_"];
+    NSMutableArray *capitalizedComponents = [NSMutableArray array];
+    
+    for (NSString *component in components) {
+        [capitalizedComponents addObject:[component capitalizedString]];
+    }
+    
+    return [capitalizedComponents componentsJoinedByString:@" "];
+}
+
+- (NSString *)formatAttributeValue:(id)value forKey:(NSString *)key {
+    if ([key isEqualToString:@"brightness"] && [value isKindOfClass:[NSNumber class]]) {
+        // Convert brightness from 0-255 to 0-100%
+        int percentage = (int)((((NSNumber *)value).floatValue / 255.0) * 100);
+        return [NSString stringWithFormat:@"%d%%", percentage];
+    } else if ([key isEqualToString:@"color_temp"] && [value isKindOfClass:[NSNumber class]]) {
+        // Show color temperature in mireds
+        return [NSString stringWithFormat:@"%@ mireds", value];
+    } else if ([key isEqualToString:@"rgb_color"] && [value isKindOfClass:[NSArray class]]) {
+        NSArray *rgbArray = (NSArray *)value;
+        if (rgbArray.count >= 3) {
+            return [NSString stringWithFormat:@"RGB(%@, %@, %@)", rgbArray[0], rgbArray[1], rgbArray[2]];
+        }
+    }
+    
+    return [NSString stringWithFormat:@"%@", value];
+}
+
+- (BOOL)shouldDisplayAttribute:(NSString *)key value:(id)value {
+    // Skip certain internal attributes
+    NSArray *skipKeys = @[@"icon", @"entity_picture", @"supported_features"];
+    if ([skipKeys containsObject:key]) {
+        return NO;
+    }
+    
+    // Skip very long values
+    NSString *stringValue = [NSString stringWithFormat:@"%@", value];
+    if (stringValue.length > 50) {
+        return NO;
+    }
+    
+    return YES;
 }
 
 - (void)setupInfoContent {
