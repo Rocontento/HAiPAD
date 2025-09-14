@@ -47,6 +47,11 @@
     
     // Setup zoom after layout is complete
     [self setupInitialZoom];
+    
+    // Debug logging
+    NSLog(@"ImagePreview: View laid out with bounds: %@", NSStringFromCGRect(self.view.bounds));
+    NSLog(@"ImagePreview: ScrollView bounds: %@", NSStringFromCGRect(self.scrollView.bounds));
+    NSLog(@"ImagePreview: Image size: %@", NSStringFromCGSize(self.originalImage.size));
 }
 
 - (void)setupScrollView {
@@ -175,21 +180,29 @@
 
 - (void)setupInitialZoom {
     if (!self.originalImage || self.scrollView.bounds.size.width == 0) {
+        NSLog(@"ImagePreview: setupInitialZoom skipped - no image or zero bounds");
         return;
     }
     
     CGSize imageSize = self.originalImage.size;
     CGSize scrollViewSize = self.scrollView.bounds.size;
     
+    NSLog(@"ImagePreview: Setting up zoom with image size: %@ and scroll view size: %@", 
+          NSStringFromCGSize(imageSize), NSStringFromCGSize(scrollViewSize));
+    
     // Calculate the scale to fit the image in the scroll view
     CGFloat scaleX = scrollViewSize.width / imageSize.width;
     CGFloat scaleY = scrollViewSize.height / imageSize.height;
     CGFloat minScale = MIN(scaleX, scaleY);
     
+    NSLog(@"ImagePreview: Calculated minScale: %f", minScale);
+    
     // Set up zoom scales - allow zooming out less and zooming in more
-    self.scrollView.minimumZoomScale = minScale * 0.8; // Allow zooming out a bit
-    self.scrollView.maximumZoomScale = minScale * 6.0; // Allow significant zoom in
-    self.scrollView.zoomScale = 1.0; // Reset to no zoom first
+    self.scrollView.minimumZoomScale = minScale * 0.5; // Allow zooming out
+    self.scrollView.maximumZoomScale = minScale * 5.0; // Allow significant zoom in
+    
+    // Reset zoom first
+    self.scrollView.zoomScale = 1.0;
     
     // Set the image view frame to the image's natural size
     self.imageView.frame = CGRectMake(0, 0, imageSize.width, imageSize.height);
@@ -197,8 +210,13 @@
     // Set the content size to the image size
     self.scrollView.contentSize = imageSize;
     
+    NSLog(@"ImagePreview: Set contentSize to: %@", NSStringFromCGSize(imageSize));
+    NSLog(@"ImagePreview: Set zoom scales - min: %f, max: %f", self.scrollView.minimumZoomScale, self.scrollView.maximumZoomScale);
+    
     // Now set the zoom scale to fit the image in the view
     self.scrollView.zoomScale = minScale;
+    
+    NSLog(@"ImagePreview: Set initial zoomScale to: %f", minScale);
     
     // Center the image
     [self centerImageInScrollView];
@@ -234,11 +252,17 @@
 #pragma mark - UIScrollViewDelegate
 
 - (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView {
+    NSLog(@"ImagePreview: viewForZoomingInScrollView called");
     return self.imageView;
 }
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView {
+    NSLog(@"ImagePreview: scrollViewDidZoom called with scale: %f", scrollView.zoomScale);
     [self centerImageInScrollView];
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    NSLog(@"ImagePreview: scrollViewDidScroll called with offset: %@", NSStringFromCGPoint(scrollView.contentOffset));
 }
 
 #pragma mark - Actions
@@ -265,6 +289,10 @@
         (contentOffset.x - imageCenter.x) / fitScale,
         (contentOffset.y - imageCenter.y) / fitScale
     );
+    
+    NSLog(@"ImagePreview: Confirming with scale: %f, offset: %@", relativeScale, NSStringFromCGPoint(relativeOffset));
+    NSLog(@"ImagePreview: Current zoom scale: %f, fit scale: %f", self.scrollView.zoomScale, fitScale);
+    NSLog(@"ImagePreview: Content offset: %@", NSStringFromCGPoint(contentOffset));
     
     // Pass the image with positioning data
     if ([self.delegate respondsToSelector:@selector(imagePreviewViewController:didFinishWithImage:scale:offset:)]) {

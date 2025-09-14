@@ -283,8 +283,11 @@
 
 - (void)applyBackgroundImage {
     if (!self.backgroundImage) {
+        NSLog(@"Dashboard: No background image to apply");
         return;
     }
+    
+    NSLog(@"Dashboard: Applying background image with size: %@", NSStringFromCGSize(self.backgroundImage.size));
     
     // Remove any existing background image views to avoid duplicates
     UIView *existingBackgroundView = [self.view viewWithTag:999];
@@ -304,9 +307,12 @@
     CGFloat offsetX = [defaults floatForKey:@"ha_background_offset_x"];
     CGFloat offsetY = [defaults floatForKey:@"ha_background_offset_y"];
     
+    NSLog(@"Dashboard: Loaded positioning - scale: %f, offset: (%f, %f)", scale, offsetX, offsetY);
+    
     // Default scale if none saved
     if (scale <= 0) {
         scale = 1.0;
+        NSLog(@"Dashboard: Using default scale: %f", scale);
     }
     
     // Create background image view with proper scaling
@@ -322,14 +328,20 @@
     CGSize imageSize = self.backgroundImage.size;
     CGSize viewSize = self.view.bounds.size;
     
+    NSLog(@"Dashboard: View size: %@, Image size: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
+    
     // Calculate fit scale (what was used as reference in preview)
     CGFloat scaleX = viewSize.width / imageSize.width;
     CGFloat scaleY = viewSize.height / imageSize.height;
     CGFloat fitScale = MIN(scaleX, scaleY);
     
+    NSLog(@"Dashboard: Calculated fit scale: %f", fitScale);
+    
     // Apply the user's chosen scale
     CGFloat finalScale = fitScale * scale;
     CGSize scaledImageSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
+    
+    NSLog(@"Dashboard: Final scale: %f, Scaled image size: %@", finalScale, NSStringFromCGSize(scaledImageSize));
     
     // Calculate center position
     CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
@@ -338,13 +350,19 @@
     center.x += offsetX * finalScale;
     center.y += offsetY * finalScale;
     
+    NSLog(@"Dashboard: Final center position: %@", NSStringFromCGPoint(center));
+    
     // Set frame with scaled size and offset position
-    backgroundImageView.frame = CGRectMake(
+    CGRect finalFrame = CGRectMake(
         center.x - scaledImageSize.width / 2.0,
         center.y - scaledImageSize.height / 2.0,
         scaledImageSize.width,
         scaledImageSize.height
     );
+    
+    NSLog(@"Dashboard: Setting background image frame: %@", NSStringFromCGRect(finalFrame));
+    
+    backgroundImageView.frame = finalFrame;
     
     // Ensure main content has transparent background to show image
     self.view.backgroundColor = [UIColor blackColor];
