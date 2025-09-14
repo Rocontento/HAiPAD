@@ -114,6 +114,17 @@
     NSInteger columnCount = self.columnsSegmentedControl.selectedSegmentIndex + 1;
     [defaults setInteger:columnCount forKey:@"ha_column_count"];
     
+    // Set default refresh intervals if not already configured
+    if (![defaults objectForKey:@"ha_auto_refresh_interval"]) {
+        [defaults setDouble:2.0 forKey:@"ha_auto_refresh_interval"]; // 2 seconds default
+    }
+    if (![defaults objectForKey:@"ha_service_call_delay"]) {
+        [defaults setDouble:0.3 forKey:@"ha_service_call_delay"]; // 0.3 seconds default
+    }
+    if (![defaults objectForKey:@"ha_websocket_enabled"]) {
+        [defaults setBool:YES forKey:@"ha_websocket_enabled"]; // WebSocket enabled by default
+    }
+    
     [defaults synchronize];
     
     // Connect with new configuration

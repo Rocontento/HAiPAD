@@ -41,7 +41,14 @@
         _isConnected = NO;
         _webSocketConnected = NO;
         _autoRefreshEnabled = YES;
-        _autoRefreshInterval = 2.0; // Default 2 seconds for fast updates
+        
+        // Load refresh interval from user defaults
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        _autoRefreshInterval = [defaults doubleForKey:@"ha_auto_refresh_interval"];
+        if (_autoRefreshInterval <= 0) {
+            _autoRefreshInterval = 2.0; // Default 2 seconds for fast updates
+        }
+        
         _websocketId = 1;
         _entitiesState = [NSMutableDictionary dictionary];
         
@@ -204,7 +211,7 @@
                     }
                 }
                 // Refresh states after service call with a much shorter delay for better responsiveness
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([self serviceCallDelay] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self fetchStates];
                 });
             });
@@ -245,7 +252,7 @@
                     }
                 }
                 // Refresh states after service call with a much shorter delay for better responsiveness
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([self serviceCallDelay] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self fetchStates];
                 });
             });
@@ -258,8 +265,10 @@
 #pragma mark - Real-time Updates
 
 - (void)startRealTimeUpdates {
-    // Try WebSocket first for best real-time performance
-    [self connectWebSocket];
+    // Try WebSocket first for best real-time performance if enabled
+    if ([self isWebSocketEnabled]) {
+        [self connectWebSocket];
+    }
     
     // Start auto refresh as fallback
     [self startAutoRefresh];
@@ -446,6 +455,20 @@
             self.entitiesState[entityId] = state;
         }
     }
+}
+
+- (NSTimeInterval)serviceCallDelay {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    double delay = [defaults doubleForKey:@"ha_service_call_delay"];
+    return (delay > 0) ? delay : 0.3; // Default 0.3 seconds
+}
+
+- (BOOL)isWebSocketEnabled {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if ([defaults objectForKey:@"ha_websocket_enabled"]) {
+        return [defaults boolForKey:@"ha_websocket_enabled"];
+    }
+    return YES; // Default enabled
 }
 
 #pragma mark - NSURLSessionWebSocketDelegate
