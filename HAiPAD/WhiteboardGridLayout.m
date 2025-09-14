@@ -226,9 +226,14 @@
     point.x -= self.gridInsets.left;
     point.y -= self.gridInsets.top;
     
-    // Calculate grid position
-    NSInteger column = (NSInteger)(point.x / (self.cellSize.width + self.cellSpacing));
-    NSInteger row = (NSInteger)(point.y / (self.cellSize.height + self.cellSpacing));
+    // Calculate grid position with improved accuracy
+    // Use center-point calculation to determine which cell the point falls into
+    CGFloat cellWidthWithSpacing = self.cellSize.width + self.cellSpacing;
+    CGFloat cellHeightWithSpacing = self.cellSize.height + self.cellSpacing;
+    
+    // Calculate column and row based on which cell center the point is closest to
+    NSInteger column = (NSInteger)((point.x + self.cellSize.width * 0.5) / cellWidthWithSpacing);
+    NSInteger row = (NSInteger)((point.y + self.cellSize.height * 0.5) / cellHeightWithSpacing);
     
     // Clamp to grid bounds
     column = MAX(0, MIN(column, self.gridColumns - 1));

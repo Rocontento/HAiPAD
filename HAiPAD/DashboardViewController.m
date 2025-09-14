@@ -27,6 +27,7 @@
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 // Drag and drop properties
 @property (nonatomic, assign) BOOL editingMode;
+@property (nonatomic, assign) BOOL hasPendingReload; // Flag to track if reload is needed after editing
 @property (nonatomic, strong) NSIndexPath *draggedIndexPath;
 @property (nonatomic, strong) UIView *draggedCellSnapshot;
 @property (nonatomic, assign) CGPoint draggedCellCenter;
@@ -50,6 +51,9 @@
     self.entitySizes = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
+
+    // Initialize drag and drop state
+    self.hasPendingReload = NO;
 
     // Initialize navigation bar state
     self.navigationBarHidden = NO;
@@ -383,7 +387,12 @@
         self.entities = filteredEntities;
     }
 
-    [self.collectionView reloadData];
+    // Avoid reloading data during drag operations to prevent visual glitches
+    if (!self.editingMode) {
+        [self.collectionView reloadData];
+    } else {
+        self.hasPendingReload = YES; // Mark that reload is needed
+    }
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -397,7 +406,12 @@
     self.statusLabel.text = @"Disconnected";
     self.statusLabel.textColor = [UIColor redColor];
     self.entities = @[];
-    [self.collectionView reloadData];
+    // Avoid reloading data during drag operations to prevent visual glitches
+    if (!self.editingMode) {
+        [self.collectionView reloadData];
+    } else {
+        self.hasPendingReload = YES; // Mark that reload is needed
+    }
 }
 
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStates:(NSArray *)states {
@@ -916,6 +930,19 @@
     if (_editingMode == editingMode) return;
 
     _editingMode = editingMode;
+
+    // Prevent auto-refresh during drag operations to avoid visual glitches
+    if (editingMode) {
+        [self.homeAssistantClient stopAutoRefresh];
+        self.hasPendingReload = NO; // Reset pending reload flag
+    } else {
+        [self.homeAssistantClient startAutoRefresh];
+        // If there was a pending reload, execute it now
+        if (self.hasPendingReload) {
+            self.hasPendingReload = NO;
+            [self.collectionView reloadData];
+        }
+    }
 
     // Update empty slots visibility based on editing mode
     self.whiteboardLayout.showEmptySlots = editingMode;
