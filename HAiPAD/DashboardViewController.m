@@ -13,8 +13,9 @@
 #import "CustomPopupViewController.h"
 #import "WhiteboardGridLayout.h"
 #import "EmptyGridSlotView.h"
+#import "EntitySelectionViewController.h"
 
-@interface DashboardViewController () <EntityCardCellDelegate>
+@interface DashboardViewController () <EntityCardCellDelegate, EmptyGridSlotViewDelegate, EntitySelectionViewControllerDelegate>
 @property (nonatomic, strong) NSArray *entities;
 @property (nonatomic, strong) NSArray *allEntities;
 @property (nonatomic, strong) NSSet *enabledEntityIds;
@@ -26,6 +27,7 @@
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 // Drag and drop properties
 @property (nonatomic, assign) BOOL editingMode;
+@property (nonatomic, assign) BOOL hasPendingReload; // Flag to track if reload is needed after editing
 @property (nonatomic, strong) NSIndexPath *draggedIndexPath;
 @property (nonatomic, strong) UIView *draggedCellSnapshot;
 @property (nonatomic, assign) CGPoint draggedCellCenter;
@@ -55,8 +57,13 @@
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
 
+
+    // Initialize drag and drop state
+    self.hasPendingReload = NO;
+
     // Initialize navigation bar state - hidden by default
     self.navigationBarHidden = YES;
+
 
     // Set up whiteboard grid layout
     [self setupWhiteboardLayout];
@@ -239,6 +246,9 @@
         [button setTitleColor:[UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1.0] forState:UIControlStateNormal];
         [button setTitleColor:[UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:1.0] forState:UIControlStateHighlighted];
     }
+    
+    // Update entities button text to "Settings"
+    [self.entitiesButton setTitle:@"Settings" forState:UIControlStateNormal];
 }
 
 - (void)setupNavigationBarToggle {
@@ -428,7 +438,12 @@
         self.entities = filteredEntities;
     }
 
-    [self.collectionView reloadData];
+    // Avoid reloading data during drag operations to prevent visual glitches
+    if (!self.editingMode) {
+        [self.collectionView reloadData];
+    } else {
+        self.hasPendingReload = YES; // Mark that reload is needed
+    }
 }
 
 #pragma mark - HomeAssistantClientDelegate
@@ -442,7 +457,12 @@
     self.statusLabel.text = @"Disconnected";
     self.statusLabel.textColor = [UIColor redColor];
     self.entities = @[];
-    [self.collectionView reloadData];
+    // Avoid reloading data during drag operations to prevent visual glitches
+    if (!self.editingMode) {
+        [self.collectionView reloadData];
+    } else {
+        self.hasPendingReload = YES; // Mark that reload is needed
+    }
 }
 
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStates:(NSArray *)states {
@@ -577,6 +597,11 @@
         EmptyGridSlotView *emptySlotView = [collectionView dequeueReusableSupplementaryViewOfKind:kind
                                                                                 withReuseIdentifier:@"EmptyGridSlotView"
                                                                                        forIndexPath:indexPath];
+        
+        // Set delegate and get grid position from layout
+        emptySlotView.delegate = self;
+        emptySlotView.gridPosition = [self.whiteboardLayout gridPositionForEmptySlotAtIndexPath:indexPath];
+        
         return emptySlotView;
     }
 
@@ -834,6 +859,9 @@
     UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
     if (!cell) return;
 
+    // Show grid overlay for better visual feedback
+    [self.whiteboardLayout showGridOverlayInView:self.collectionView];
+
     // Create a snapshot of the cell
     UIView *cellSnapshot = [self snapshotViewFromCell:cell];
     self.draggedCellSnapshot = cellSnapshot;
@@ -861,11 +889,16 @@
     // Move the snapshot to follow the finger
     self.draggedCellSnapshot.center = location;
 
-    // Calculate target grid position and provide visual feedback
-    CGPoint gridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
-
-    // Optional: Add highlighting for target position
-    // This could be implemented by updating empty slot views to show as highlighted
+    // Get the actual size of the card being dragged
+    CGSize cardSize = [self gridSizeForItemAtIndexPath:self.draggedIndexPath];
+    
+    // Calculate target grid position considering the card size
+    CGPoint gridPosition = [self.whiteboardLayout gridPositionFromPoint:location forCardSize:cardSize];
+    
+    // Show visual feedback for the target area
+    if ([self.whiteboardLayout respondsToSelector:@selector(highlightGridCells:size:)]) {
+        [self.whiteboardLayout highlightGridCells:gridPosition size:cardSize];
+    }
 }
 
 - (void)endDragAtLocation:(CGPoint)location {
@@ -874,21 +907,24 @@
         return;
     }
 
-    // Calculate the target grid position
-    CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
+    // Get the actual size of the card being dragged
+    CGSize cardSize = [self gridSizeForItemAtIndexPath:self.draggedIndexPath];
+
+    // Calculate the target grid position considering the card size
+    CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location forCardSize:cardSize];
 
     // Get the original cell
     UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];
 
-    // Check if the new position is valid
-    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1) excludingIndexPath:nil];
+    // Check if the new position is valid for the actual card size
+    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:cardSize excludingIndexPath:self.draggedIndexPath];
 
     if (positionIsValid) {
         // Update the entity position
         [self didMoveItemAtIndexPath:self.draggedIndexPath toGridPosition:newGridPosition];
 
-        // Animate to the new position
-        CGRect targetFrame = [self.whiteboardLayout frameForGridPosition:newGridPosition size:CGSizeMake(1, 1)];
+        // Animate to the new position using the actual card size
+        CGRect targetFrame = [self.whiteboardLayout frameForGridPosition:newGridPosition size:cardSize];
 
         [UIView animateWithDuration:0.3 animations:^{
             self.draggedCellSnapshot.center = CGPointMake(CGRectGetMidX(targetFrame), CGRectGetMidY(targetFrame));
@@ -935,6 +971,9 @@
 }
 
 - (void)cleanupDragOperation {
+    // Hide grid overlay
+    [self.whiteboardLayout hideGridOverlay];
+    
     // Show the original cell
     if (self.draggedIndexPath) {
         UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];
@@ -956,6 +995,19 @@
     if (_editingMode == editingMode) return;
 
     _editingMode = editingMode;
+
+    // Prevent auto-refresh during drag operations to avoid visual glitches
+    if (editingMode) {
+        [self.homeAssistantClient stopAutoRefresh];
+        self.hasPendingReload = NO; // Reset pending reload flag
+    } else {
+        [self.homeAssistantClient startAutoRefresh];
+        // If there was a pending reload, execute it now
+        if (self.hasPendingReload) {
+            self.hasPendingReload = NO;
+            [self.collectionView reloadData];
+        }
+    }
 
     // Update empty slots visibility based on editing mode
     self.whiteboardLayout.showEmptySlots = editingMode;
@@ -1174,97 +1226,62 @@
     }
 }
 
-#pragma mark - Customization Settings
 
-- (void)loadCustomizationSettings {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    
-    // Load dashboard background color
-    NSData *dashboardColorData = [defaults dataForKey:@"ha_dashboard_background_color"];
-    if (dashboardColorData) {
-        self.dashboardBackgroundColor = [NSKeyedUnarchiver unarchiveObjectWithData:dashboardColorData];
-    } else {
-        self.dashboardBackgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0]; // Default
+#pragma mark - EmptyGridSlotViewDelegate
+
+- (void)emptyGridSlotViewWasTapped:(EmptyGridSlotView *)slotView atGridPosition:(CGPoint)gridPosition {
+    // Only respond to taps when in editing mode
+    if (!self.editingMode) {
+        return;
     }
     
-    // Load navbar color
-    NSData *navbarColorData = [defaults dataForKey:@"ha_navbar_color"];
-    if (navbarColorData) {
-        self.navbarColor = [NSKeyedUnarchiver unarchiveObjectWithData:navbarColorData];
-    } else {
-        self.navbarColor = [UIColor colorWithWhite:0.98 alpha:1.0]; // Default
-    }
+    // Create entity selection controller with all available entities
+    EntitySelectionViewController *entitySelection = [EntitySelectionViewController controllerWithEntities:self.allEntities 
+                                                                                           targetGridPosition:gridPosition];
+    entitySelection.delegate = self;
     
-    // Load background image
-    NSData *backgroundImageData = [defaults dataForKey:@"ha_background_image"];
-    if (backgroundImageData) {
-        self.backgroundImage = [UIImage imageWithData:backgroundImageData];
-    }
-    
-    // Load background type
-    self.backgroundType = [defaults integerForKey:@"ha_background_type"];
+    // Present modally
+    entitySelection.modalPresentationStyle = UIModalPresentationOverCurrentContext;
+    entitySelection.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
+    [self presentViewController:entitySelection animated:YES completion:nil];
 }
 
-- (void)applyCustomizationSettings {
-    // Apply navbar color
-    if (self.navigationBarView && self.navbarColor) {
-        self.navigationBarView.backgroundColor = self.navbarColor;
-    }
+#pragma mark - EntitySelectionViewControllerDelegate
+
+- (void)entitySelectionViewController:(EntitySelectionViewController *)controller 
+                     didSelectEntity:(NSDictionary *)entity 
+                      forGridPosition:(CGPoint)gridPosition {
     
-    // Apply dashboard background
-    if (self.collectionView) {
-        if (self.backgroundType == 1 && self.backgroundImage) {
-            // Use background image
-            [self applyBackgroundImage];
-        } else {
-            // Use background color
-            self.collectionView.backgroundColor = self.dashboardBackgroundColor;
-            // Remove any existing background image view
-            [self removeBackgroundImageView];
+    // Dismiss the selection controller first
+    [controller dismissViewControllerAnimated:YES completion:^{
+        // Add the entity to our enabled entities if it's not already there
+        NSString *entityId = entity[@"entity_id"];
+        if (![self.enabledEntityIds containsObject:entityId]) {
+            NSMutableSet *mutableEnabledEntities = [self.enabledEntityIds mutableCopy];
+            [mutableEnabledEntities addObject:entityId];
+            self.enabledEntityIds = [mutableEnabledEntities copy];
+            
+            // Save the updated enabled entities
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            [defaults setObject:[self.enabledEntityIds allObjects] forKey:@"ha_enabled_entities"];
+            [defaults synchronize];
         }
-    }
+        
+        // Set the position for this entity
+        [self setGridPosition:gridPosition forEntity:entityId];
+        
+        // Refresh the filtered entities and reload the collection view
+        [self filterEntitiesBasedOnSettings];
+        
+        // Exit editing mode
+        [self setEditingMode:NO];
+        [self.editButton setTitle:@"Edit" forState:UIControlStateNormal];
+    }];
 }
 
-- (void)applyBackgroundImage {
-    if (!self.backgroundImage || !self.collectionView) return;
-    
-    // Remove any existing background image view
-    [self removeBackgroundImageView];
-    
-    // Create and configure background image view
-    UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
-    backgroundImageView.clipsToBounds = YES;
-    backgroundImageView.tag = 9999; // Tag for easy identification
-    
-    // Insert background image view behind all other views but above the collection view background
-    [self.view insertSubview:backgroundImageView belowSubview:self.collectionView];
-    
-    // Set up auto layout constraints to fill the entire view (not just collection view)
-    backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-    ]];
-    
-    // Make collection view background transparent to show the image
-    self.collectionView.backgroundColor = [UIColor clearColor];
-}
+- (void)entitySelectionViewControllerDidCancel:(EntitySelectionViewController *)controller {
+    [controller dismissViewControllerAnimated:YES completion:nil];
 
-- (void)removeBackgroundImageView {
-    // Find and remove any existing background image view from main view
-    UIView *existingBackgroundView = [self.view viewWithTag:9999];
-    if (existingBackgroundView) {
-        [existingBackgroundView removeFromSuperview];
-    }
-    
-    // Also check collection view for any old background views
-    UIView *existingCollectionBgView = [self.collectionView viewWithTag:9999];
-    if (existingCollectionBgView) {
-        [existingCollectionBgView removeFromSuperview];
-    }
 }
 
 @end

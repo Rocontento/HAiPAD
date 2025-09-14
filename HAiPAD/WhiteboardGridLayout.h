@@ -47,6 +47,7 @@
 @property (nonatomic, assign) BOOL allowsReordering;   // Enable drag-and-drop reordering
 
 - (CGPoint)gridPositionFromPoint:(CGPoint)point;
+- (CGPoint)gridPositionFromPoint:(CGPoint)point forCardSize:(CGSize)cardSize;
 - (CGRect)frameForGridPosition:(CGPoint)gridPosition size:(CGSize)gridSize;
 - (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize excludingIndexPath:(NSIndexPath *)excludingIndexPath;
 
@@ -54,5 +55,11 @@
 - (void)showGridOverlayInView:(UIView *)view;
 - (void)hideGridOverlay;
 - (void)highlightGridCells:(CGPoint)position size:(CGSize)size;
+
+// Get grid position from a touch point in the collection view
+- (CGPoint)gridPositionFromTouchPoint:(CGPoint)point inCollectionView:(UICollectionView *)collectionView;
+
+// Get grid position for an empty slot by index path
+- (CGPoint)gridPositionForEmptySlotAtIndexPath:(NSIndexPath *)indexPath;
 
 @end

@@ -12,6 +12,7 @@
 @property (nonatomic, strong) NSMutableDictionary *layoutAttributes;
 @property (nonatomic, strong) NSMutableSet *occupiedPositions;
 @property (nonatomic, strong) NSMutableDictionary *gridSizes; // indexPath -> gridSize
+@property (nonatomic, strong) NSMutableDictionary *emptySlotGridPositions; // indexPath -> NSValue(CGPoint)
 @property (nonatomic, assign) CGSize contentSize;
 @property (nonatomic, assign) CGSize cellSize;
 @end
@@ -46,6 +47,7 @@
     self.layoutAttributes = [NSMutableDictionary dictionary];
     self.occupiedPositions = [NSMutableSet set];
     self.gridSizes = [NSMutableDictionary dictionary];
+    self.emptySlotGridPositions = [NSMutableDictionary dictionary];
 }
 
 #pragma mark - UICollectionViewLayout Override Methods
@@ -55,6 +57,7 @@
     
     [self.layoutAttributes removeAllObjects];
     [self.occupiedPositions removeAllObjects];
+    [self.emptySlotGridPositions removeAllObjects];
     
     // Calculate cell size based on collection view dimensions
     [self calculateCellSize];
@@ -120,6 +123,11 @@
                                                                                      withIndexPath:[NSIndexPath indexPathForItem:slotIndex inSection:0]];
                 emptySlotAttributes.frame = slotFrame;
                 emptySlotAttributes.zIndex = -1; // Behind regular items
+                
+                // Store grid position for this empty slot
+                NSIndexPath *emptySlotIndexPath = [NSIndexPath indexPathForItem:slotIndex inSection:0];
+                self.emptySlotGridPositions[emptySlotIndexPath] = [NSValue valueWithCGPoint:CGPointMake(col, row)];
+                
                 [attributesArray addObject:emptySlotAttributes];
                 slotIndex++;
             }
@@ -218,13 +226,38 @@
     point.x -= self.gridInsets.left;
     point.y -= self.gridInsets.top;
     
-    // Calculate grid position
-    NSInteger column = (NSInteger)(point.x / (self.cellSize.width + self.cellSpacing));
-    NSInteger row = (NSInteger)(point.y / (self.cellSize.height + self.cellSpacing));
+    // Calculate grid position with improved accuracy
+    // Use center-point calculation to determine which cell the point falls into
+    CGFloat cellWidthWithSpacing = self.cellSize.width + self.cellSpacing;
+    CGFloat cellHeightWithSpacing = self.cellSize.height + self.cellSpacing;
+    
+    // Calculate column and row based on which cell center the point is closest to
+    NSInteger column = (NSInteger)((point.x + self.cellSize.width * 0.5) / cellWidthWithSpacing);
+    NSInteger row = (NSInteger)((point.y + self.cellSize.height * 0.5) / cellHeightWithSpacing);
     
     // Clamp to grid bounds
     column = MAX(0, MIN(column, self.gridColumns - 1));
     row = MAX(0, MIN(row, self.gridRows - 1));
+    
+    return CGPointMake(column, row);
+}
+
+- (CGPoint)gridPositionFromPoint:(CGPoint)point forCardSize:(CGSize)cardSize {
+    // Adjust point for grid insets
+    point.x -= self.gridInsets.left;
+    point.y -= self.gridInsets.top;
+    
+    CGFloat cellWidthWithSpacing = self.cellSize.width + self.cellSpacing;
+    CGFloat cellHeightWithSpacing = self.cellSize.height + self.cellSpacing;
+    
+    // For multi-cell cards, we want to calculate the optimal position
+    // such that the card fits completely within the grid
+    NSInteger column = (NSInteger)(point.x / cellWidthWithSpacing);
+    NSInteger row = (NSInteger)(point.y / cellHeightWithSpacing);
+    
+    // Ensure the card fits within grid bounds
+    column = MAX(0, MIN(column, self.gridColumns - (NSInteger)cardSize.width));
+    row = MAX(0, MIN(row, self.gridRows - (NSInteger)cardSize.height));
     
     return CGPointMake(column, row);
 }
@@ -508,6 +541,21 @@
     [UIView animateWithDuration:0.2 animations:^{
         highlight.transform = CGAffineTransformIdentity;
     }];
+}
+
+- (CGPoint)gridPositionFromTouchPoint:(CGPoint)point inCollectionView:(UICollectionView *)collectionView {
+    // Convert the touch point to a grid position considering the collection view's content offset
+    CGPoint adjustedPoint = CGPointMake(point.x + collectionView.contentOffset.x, 
+                                       point.y + collectionView.contentOffset.y);
+    return [self gridPositionFromPoint:adjustedPoint];
+}
+
+- (CGPoint)gridPositionForEmptySlotAtIndexPath:(NSIndexPath *)indexPath {
+    NSValue *positionValue = self.emptySlotGridPositions[indexPath];
+    if (positionValue) {
+        return [positionValue CGPointValue];
+    }
+    return CGPointMake(-1, -1); // Invalid position
 }
 
 @end

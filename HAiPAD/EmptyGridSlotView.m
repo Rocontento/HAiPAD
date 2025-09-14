@@ -39,6 +39,10 @@
     
     // Add a subtle plus icon to indicate this is a drop zone
     [self addPlusIcon];
+    
+    // Add tap gesture recognizer
+    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
+    [self addGestureRecognizer:tapGesture];
 }
 
 - (void)createDashedBorderEffect {
@@ -118,6 +122,23 @@
         self.layer.borderColor = borderColor.CGColor;
         self.backgroundColor = backgroundColor;
     }
+}
+
+#pragma mark - Tap Gesture Handling
+
+- (void)handleTap:(UITapGestureRecognizer *)gesture {
+    // Add visual feedback for the tap
+    [self setHighlighted:YES animated:YES];
+    
+    // After a short delay, remove highlight and notify delegate
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self setHighlighted:NO animated:YES];
+        
+        // Notify delegate of tap
+        if ([self.delegate respondsToSelector:@selector(emptyGridSlotViewWasTapped:atGridPosition:)]) {
+            [self.delegate emptyGridSlotViewWasTapped:self atGridPosition:self.gridPosition];
+        }
+    });
 }
 
 @end
