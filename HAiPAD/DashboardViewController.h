@@ -9,8 +9,9 @@
 #import <UIKit/UIKit.h>
 #import "HomeAssistantClient.h"
 #import "WhiteboardGridLayout.h"
+#import "EntityCardCell.h"
 
-@interface DashboardViewController : UIViewController <HomeAssistantClientDelegate, UICollectionViewDataSource, UICollectionViewDelegate, WhiteboardGridLayoutDelegate>
+@interface DashboardViewController : UIViewController <HomeAssistantClientDelegate, UICollectionViewDataSource, UICollectionViewDelegate, WhiteboardGridLayoutDelegate, EntityCardCellDelegate>
 
 @property (weak, nonatomic) IBOutlet UICollectionView *collectionView;
 @property (weak, nonatomic) IBOutlet UILabel *statusLabel;
