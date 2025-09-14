@@ -35,6 +35,80 @@
     self.infoButton.layer.cornerRadius = 10.0;
     self.infoButton.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     [self.infoButton setTitleColor:[UIColor grayColor] forState:UIControlStateNormal];
+    
+    // Create resize handle (iOS 18 style curved line)
+    [self createResizeHandle];
+}
+
+- (void)createResizeHandle {
+    self.resizeHandle = [[UIView alloc] init];
+    self.resizeHandle.backgroundColor = [UIColor clearColor];
+    self.resizeHandle.hidden = YES; // Initially hidden, shown only in edit mode
+    [self.cardContainerView addSubview:self.resizeHandle];
+    
+    // Create the curved lines using CAShapeLayer (iOS 9.3.5 compatible)
+    CAShapeLayer *shapeLayer = [CAShapeLayer layer];
+    
+    // Create path for the resize handle (similar to iOS 18 widget resize handle)
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    
+    // Draw three small curved lines in the bottom-right corner
+    CGFloat lineLength = 8.0;
+    CGFloat spacing = 3.0;
+    CGFloat cornerOffset = 8.0;
+    
+    for (int i = 0; i < 3; i++) {
+        CGFloat startX = lineLength - (i * spacing);
+        CGFloat startY = (i * spacing);
+        CGFloat endX = 0;
+        CGFloat endY = startY + lineLength;
+        
+        [path moveToPoint:CGPointMake(startX, startY)];
+        [path addLineToPoint:CGPointMake(endX, endY)];
+    }
+    
+    shapeLayer.path = path.CGPath;
+    shapeLayer.strokeColor = [UIColor colorWithWhite:0.6 alpha:1.0].CGColor;
+    shapeLayer.lineWidth = 1.5;
+    shapeLayer.lineCap = kCALineCapRound;
+    
+    [self.resizeHandle.layer addSublayer:shapeLayer];
+    self.resizeHandle.tag = 999; // Tag to identify the shape layer
+    
+    // Add pan gesture recognizer for resizing
+    UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleResizePan:)];
+    [self.resizeHandle addGestureRecognizer:panGesture];
+}
+
+- (void)handleResizePan:(UIPanGestureRecognizer *)gesture {
+    if ([self.delegate respondsToSelector:@selector(entityCardCell:didStartResizing:)] ||
+        [self.delegate respondsToSelector:@selector(entityCardCell:didResize:)] ||
+        [self.delegate respondsToSelector:@selector(entityCardCell:didEndResizing:)]) {
+        
+        switch (gesture.state) {
+            case UIGestureRecognizerStateBegan:
+                if ([self.delegate respondsToSelector:@selector(entityCardCell:didStartResizing:)]) {
+                    [self.delegate entityCardCell:self didStartResizing:gesture];
+                }
+                break;
+                
+            case UIGestureRecognizerStateChanged:
+                if ([self.delegate respondsToSelector:@selector(entityCardCell:didResize:)]) {
+                    [self.delegate entityCardCell:self didResize:gesture];
+                }
+                break;
+                
+            case UIGestureRecognizerStateEnded:
+            case UIGestureRecognizerStateCancelled:
+                if ([self.delegate respondsToSelector:@selector(entityCardCell:didEndResizing:)]) {
+                    [self.delegate entityCardCell:self didEndResizing:gesture];
+                }
+                break;
+                
+            default:
+                break;
+        }
+    }
 }
 
 - (void)prepareForReuse {
@@ -47,6 +121,37 @@
     self.nameLabel.text = @"";
     self.stateLabel.text = @"";
     self.nameLabel.textColor = [UIColor darkTextColor];
+    
+    // Hide resize handle by default
+    self.resizeHandle.hidden = YES;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    
+    // Position resize handle in bottom-right corner
+    CGFloat handleSize = 20.0;
+    CGFloat cornerOffset = 5.0;
+    self.resizeHandle.frame = CGRectMake(
+        self.cardContainerView.bounds.size.width - handleSize - cornerOffset,
+        self.cardContainerView.bounds.size.height - handleSize - cornerOffset,
+        handleSize,
+        handleSize
+    );
+}
+
+- (void)setEditingMode:(BOOL)editingMode {
+    self.resizeHandle.hidden = !editingMode;
+    
+    if (editingMode) {
+        // Add subtle highlight to indicate card is resizable
+        self.cardContainerView.layer.borderWidth = 1.0;
+        self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:0.3].CGColor;
+    } else {
+        // Remove highlight
+        self.cardContainerView.layer.borderWidth = 0.0;
+        self.cardContainerView.layer.borderColor = [UIColor clearColor].CGColor;
+    }
 }
 
 - (void)configureWithEntity:(NSDictionary *)entity {

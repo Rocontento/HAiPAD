@@ -76,6 +76,15 @@
     
     // Set segmented control to correct index (1-4 columns maps to indices 0-3)
     self.columnsSegmentedControl.selectedSegmentIndex = columnCount - 1;
+    
+    // Load grid size preference (default to medium: 4x6)
+    NSInteger gridSizeIndex = [defaults integerForKey:@"ha_grid_size"];
+    if (gridSizeIndex == 0) {
+        gridSizeIndex = 1; // Default to medium (4x6)
+    }
+    
+    // Set grid size segmented control (0=Small 3x4, 1=Medium 4x6, 2=Large 5x8)
+    self.gridSizeSegmentedControl.selectedSegmentIndex = gridSizeIndex;
 }
 
 #pragma mark - IBActions
@@ -113,6 +122,10 @@
     // Save column preference (segmented control index 0-3 maps to 1-4 columns)
     NSInteger columnCount = self.columnsSegmentedControl.selectedSegmentIndex + 1;
     [defaults setInteger:columnCount forKey:@"ha_column_count"];
+    
+    // Save grid size preference (index 0=Small 3x4, 1=Medium 4x6, 2=Large 5x8)
+    NSInteger gridSizeIndex = self.gridSizeSegmentedControl.selectedSegmentIndex;
+    [defaults setInteger:gridSizeIndex forKey:@"ha_grid_size"];
     
     [defaults synchronize];
     

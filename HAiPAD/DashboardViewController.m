@@ -23,12 +23,17 @@
 @property (nonatomic, assign) NSInteger columnCount;
 @property (nonatomic, strong) WhiteboardGridLayout *whiteboardLayout;
 @property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
+@property (nonatomic, strong) NSMutableDictionary *entitySizes;     // entity_id -> NSValue(CGSize)
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
 // Drag and drop properties
 @property (nonatomic, assign) BOOL editingMode;
 @property (nonatomic, strong) NSIndexPath *draggedIndexPath;
 @property (nonatomic, strong) UIView *draggedCellSnapshot;
 @property (nonatomic, assign) CGPoint draggedCellCenter;
+// Resize properties
+@property (nonatomic, strong) NSIndexPath *resizingIndexPath;
+@property (nonatomic, assign) CGSize originalResizeSize;
+@property (nonatomic, assign) CGPoint resizeStartPoint;
 @end
 
 @implementation DashboardViewController
@@ -41,6 +46,7 @@
     self.allEntities = @[];
     self.enabledEntityIds = [NSSet set];
     self.entityPositions = [NSMutableDictionary dictionary];
+    self.entitySizes = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
 
@@ -276,6 +282,12 @@
     NSDictionary *entity = self.entities[indexPath.item];
     [cell configureWithEntity:entity];
 
+    // Set editing mode for resize handles
+    [cell setEditingMode:self.editingMode];
+    
+    // Set delegate for resize handling
+    cell.delegate = self;
+
     // Add target for info button
     [cell.infoButton addTarget:self action:@selector(infoButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     cell.infoButton.tag = indexPath.item;
@@ -346,13 +358,44 @@
     self.whiteboardLayout = [[WhiteboardGridLayout alloc] init];
     self.whiteboardLayout.delegate = self;
 
-    // Configure grid based on device
+    // Load grid size configuration
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSInteger gridSizeIndex = [defaults integerForKey:@"ha_grid_size"];
+    if (gridSizeIndex == 0) {
+        gridSizeIndex = 1; // Default to medium (4x6)
+    }
+
+    // Configure grid based on device and user preference
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        self.whiteboardLayout.gridColumns = 4;
-        self.whiteboardLayout.gridRows = 6;
+        // iPad grid sizes: Small 3x4, Medium 4x6, Large 5x8
+        switch (gridSizeIndex) {
+            case 0: // Small
+                self.whiteboardLayout.gridColumns = 3;
+                self.whiteboardLayout.gridRows = 4;
+                break;
+            case 2: // Large
+                self.whiteboardLayout.gridColumns = 5;
+                self.whiteboardLayout.gridRows = 8;
+                break;
+            default: // Medium (1)
+                self.whiteboardLayout.gridColumns = 4;
+                self.whiteboardLayout.gridRows = 6;
+                break;
+        }
     } else {
+        // iPhone/iPod: Always 2 columns, varying rows based on grid size
         self.whiteboardLayout.gridColumns = 2;
-        self.whiteboardLayout.gridRows = 8;
+        switch (gridSizeIndex) {
+            case 0: // Small
+                self.whiteboardLayout.gridRows = 6;
+                break;
+            case 2: // Large
+                self.whiteboardLayout.gridRows = 10;
+                break;
+            default: // Medium (1)
+                self.whiteboardLayout.gridRows = 8;
+                break;
+        }
     }
 
     self.whiteboardLayout.cellSpacing = 12.0;
@@ -370,17 +413,25 @@
 - (void)loadEntityPositions {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSDictionary *savedPositions = [defaults dictionaryForKey:@"ha_entity_positions"];
+    NSDictionary *savedSizes = [defaults dictionaryForKey:@"ha_entity_sizes"];
 
     if (savedPositions) {
         self.entityPositions = [savedPositions mutableCopy];
     } else {
         self.entityPositions = [NSMutableDictionary dictionary];
     }
+    
+    if (savedSizes) {
+        self.entitySizes = [savedSizes mutableCopy];
+    } else {
+        self.entitySizes = [NSMutableDictionary dictionary];
+    }
 }
 
 - (void)saveEntityPositions {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setObject:self.entityPositions forKey:@"ha_entity_positions"];
+    [defaults setObject:self.entitySizes forKey:@"ha_entity_sizes"];
     [defaults synchronize];
 }
 
@@ -399,6 +450,24 @@
 - (void)setGridPosition:(CGPoint)position forEntity:(NSString *)entityId {
     NSString *positionString = NSStringFromCGPoint(position);
     self.entityPositions[entityId] = positionString;
+    [self saveEntityPositions];
+}
+
+- (CGSize)getGridSizeForEntity:(NSString *)entityId defaultSize:(CGSize)defaultSize {
+    NSString *sizeString = self.entitySizes[entityId];
+    if (sizeString) {
+        CGSize size = CGSizeFromString(sizeString);
+        return size;
+    }
+
+    // If no saved size, store the default size
+    [self setGridSize:defaultSize forEntity:entityId];
+    return defaultSize;
+}
+
+- (void)setGridSize:(CGSize)size forEntity:(NSString *)entityId {
+    NSString *sizeString = NSStringFromCGSize(size);
+    self.entitySizes[entityId] = sizeString;
     [self saveEntityPositions];
 }
 
@@ -421,7 +490,16 @@
 }
 
 - (CGSize)gridSizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    // All cards are 1x1 for now, but this allows for future expansion
+    if (indexPath.item < self.entities.count) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        
+        // Get the saved size for this entity, default to 1x1
+        CGSize entitySize = [self getGridSizeForEntity:entityId defaultSize:CGSizeMake(1, 1)];
+        return entitySize;
+    }
+    
+    // Default to 1x1 if entity not found
     return CGSizeMake(1, 1);
 }
 
@@ -597,6 +675,14 @@
     // Update empty slots visibility based on editing mode
     self.whiteboardLayout.showEmptySlots = editingMode;
 
+    // Update all visible cells to show/hide resize handles
+    for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+        if ([cell isKindOfClass:[EntityCardCell class]]) {
+            EntityCardCell *entityCell = (EntityCardCell *)cell;
+            [entityCell setEditingMode:editingMode];
+        }
+    }
+
     // Invalidate layout to show/hide empty slots
     [self.collectionView.collectionViewLayout invalidateLayout];
 
@@ -699,6 +785,81 @@
                                                                              type:CustomPopupTypeSensorInfo
                                                                      actionHandler:nil];
     [popup presentFromViewController:self animated:YES];
+}
+
+#pragma mark - EntityCardCellDelegate
+
+- (void)entityCardCell:(UICollectionViewCell *)cell didStartResizing:(UIPanGestureRecognizer *)gesture {
+    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+    if (!indexPath) return;
+    
+    self.resizingIndexPath = indexPath;
+    self.resizeStartPoint = [gesture locationInView:self.collectionView];
+    
+    // Get current size of the entity
+    if (indexPath.item < self.entities.count) {
+        NSDictionary *entity = self.entities[indexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        self.originalResizeSize = [self getGridSizeForEntity:entityId defaultSize:CGSizeMake(1, 1)];
+    }
+    
+    // Provide visual feedback
+    EntityCardCell *entityCell = (EntityCardCell *)cell;
+    [UIView animateWithDuration:0.1 animations:^{
+        entityCell.transform = CGAffineTransformMakeScale(1.05, 1.05);
+        entityCell.alpha = 0.9;
+    }];
+}
+
+- (void)entityCardCell:(UICollectionViewCell *)cell didResize:(UIPanGestureRecognizer *)gesture {
+    if (!self.resizingIndexPath) return;
+    
+    CGPoint currentPoint = [gesture locationInView:self.collectionView];
+    CGPoint translation = CGPointMake(currentPoint.x - self.resizeStartPoint.x, 
+                                     currentPoint.y - self.resizeStartPoint.y);
+    
+    // Calculate new size based on drag distance
+    // Each grid cell is approximately 80-120 points depending on device
+    CGFloat cellWidth = (self.collectionView.bounds.size.width - self.whiteboardLayout.gridInsets.left - self.whiteboardLayout.gridInsets.right - (self.whiteboardLayout.gridColumns - 1) * self.whiteboardLayout.cellSpacing) / self.whiteboardLayout.gridColumns;
+    CGFloat cellHeight = (self.collectionView.bounds.size.height - self.whiteboardLayout.gridInsets.top - self.whiteboardLayout.gridInsets.bottom - (self.whiteboardLayout.gridRows - 1) * self.whiteboardLayout.cellSpacing) / self.whiteboardLayout.gridRows;
+    
+    // Calculate size change (minimum 1x1, maximum 3x3 for practical use)
+    NSInteger widthChange = (NSInteger)(translation.x / cellWidth);
+    NSInteger heightChange = (NSInteger)(translation.y / cellHeight);
+    
+    CGSize newSize = CGSizeMake(
+        MAX(1, MIN(3, self.originalResizeSize.width + widthChange)),
+        MAX(1, MIN(3, self.originalResizeSize.height + heightChange))
+    );
+    
+    // Update size temporarily for visual feedback (we'll commit it on end)
+    if (self.resizingIndexPath.item < self.entities.count) {
+        NSDictionary *entity = self.entities[self.resizingIndexPath.item];
+        NSString *entityId = entity[@"entity_id"];
+        [self setGridSize:newSize forEntity:entityId];
+        
+        // Invalidate layout to show new size
+        [self.collectionView.collectionViewLayout invalidateLayout];
+    }
+}
+
+- (void)entityCardCell:(UICollectionViewCell *)cell didEndResizing:(UIPanGestureRecognizer *)gesture {
+    if (!self.resizingIndexPath) return;
+    
+    // Restore visual state
+    EntityCardCell *entityCell = (EntityCardCell *)cell;
+    [UIView animateWithDuration:0.1 animations:^{
+        entityCell.transform = CGAffineTransformIdentity;
+        entityCell.alpha = 1.0;
+    }];
+    
+    // The size has already been updated in didResize, so just clean up
+    self.resizingIndexPath = nil;
+    self.originalResizeSize = CGSizeZero;
+    self.resizeStartPoint = CGPointZero;
+    
+    // Final layout update to ensure everything is positioned correctly
+    [self.collectionView.collectionViewLayout invalidateLayout];
 }
 
 @end
