@@ -9,10 +9,14 @@
 #import "ConfigurationViewController.h"
 #import "HomeAssistantClient.h"
 #import "CustomPopupViewController.h"
+#import <Photos/Photos.h>
 
-@interface ConfigurationViewController () <HomeAssistantClientDelegate>
+@interface ConfigurationViewController () <HomeAssistantClientDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @property (nonatomic, strong) HomeAssistantClient *testClient;
 @property (nonatomic, weak) id<HomeAssistantClientDelegate> originalDelegate;
+@property (nonatomic, strong) UIColor *selectedDashboardColor;
+@property (nonatomic, strong) UIColor *selectedNavbarColor;
+@property (nonatomic, strong) UIImage *selectedBackgroundImage;
 @end
 
 @implementation ConfigurationViewController
@@ -69,6 +73,9 @@
         self.gridRowsSlider.continuous = YES;
         [self.gridRowsSlider addTarget:self action:@selector(gridRowsSliderChanged:) forControlEvents:UIControlEventValueChanged];
     }
+    
+    // Set up customization controls
+    [self setupCustomizationControls];
 }
 
 - (void)loadConfiguration {
@@ -128,6 +135,9 @@
         self.gridRowsSlider.value = gridRows;
         [self updateGridRowsLabel];
     }
+    
+    // Load customization settings
+    [self loadCustomizationSettings];
 }
 
 #pragma mark - IBActions
@@ -183,6 +193,9 @@
     if (![defaults objectForKey:@"ha_websocket_enabled"]) {
         [defaults setBool:YES forKey:@"ha_websocket_enabled"]; // WebSocket enabled by default
     }
+    
+    // Save customization settings
+    [self saveCustomizationSettings];
     
     [defaults synchronize];
     
@@ -343,6 +356,427 @@
         NSInteger gridRows = (NSInteger)self.gridRowsSlider.value;
         self.gridRowsLabel.text = [NSString stringWithFormat:@"Rows: %ld", (long)gridRows];
     }
+}
+
+#pragma mark - Customization Controls
+
+- (void)setupCustomizationControls {
+    // Initialize default colors
+    self.selectedDashboardColor = [UIColor colorWithWhite:0.95 alpha:1.0]; // Default light gray
+    self.selectedNavbarColor = [UIColor colorWithWhite:0.98 alpha:1.0]; // Default navigation color
+    
+    // Style dashboard color button
+    if (self.dashboardColorButton) {
+        self.dashboardColorButton.layer.cornerRadius = 8.0;
+        self.dashboardColorButton.layer.borderWidth = 2.0;
+        self.dashboardColorButton.layer.borderColor = [UIColor darkGrayColor].CGColor;
+        [self updateDashboardColorButton];
+    }
+    
+    // Style navbar color button
+    if (self.navbarColorButton) {
+        self.navbarColorButton.layer.cornerRadius = 8.0;
+        self.navbarColorButton.layer.borderWidth = 2.0;
+        self.navbarColorButton.layer.borderColor = [UIColor darkGrayColor].CGColor;
+        [self updateNavbarColorButton];
+    }
+    
+    // Style background image button
+    if (self.backgroundImageButton) {
+        self.backgroundImageButton.backgroundColor = [UIColor colorWithRed:0.2 green:0.6 blue:1.0 alpha:1.0];
+        [self.backgroundImageButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.backgroundImageButton.layer.cornerRadius = 5.0;
+    }
+    
+    // Setup background type control
+    if (self.backgroundTypeControl) {
+        [self.backgroundTypeControl setTitle:@"Color" forSegmentAtIndex:0];
+        [self.backgroundTypeControl setTitle:@"Image" forSegmentAtIndex:1];
+        self.backgroundTypeControl.selectedSegmentIndex = 0; // Default to color
+        [self backgroundTypeChanged:self.backgroundTypeControl];
+    }
+}
+
+- (void)loadCustomizationSettings {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    // Load dashboard background color
+    NSData *dashboardColorData = [defaults dataForKey:@"ha_dashboard_background_color"];
+    if (dashboardColorData) {
+        self.selectedDashboardColor = [NSKeyedUnarchiver unarchiveObjectWithData:dashboardColorData];
+    } else {
+        self.selectedDashboardColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    }
+    [self updateDashboardColorButton];
+    
+    // Load navbar color
+    NSData *navbarColorData = [defaults dataForKey:@"ha_navbar_color"];
+    if (navbarColorData) {
+        self.selectedNavbarColor = [NSKeyedUnarchiver unarchiveObjectWithData:navbarColorData];
+    } else {
+        self.selectedNavbarColor = [UIColor colorWithWhite:0.98 alpha:1.0];
+    }
+    [self updateNavbarColorButton];
+    
+    // Load background image
+    NSData *backgroundImageData = [defaults dataForKey:@"ha_background_image"];
+    if (backgroundImageData) {
+        self.selectedBackgroundImage = [UIImage imageWithData:backgroundImageData];
+    }
+    
+    // Load background type
+    NSInteger backgroundType = [defaults integerForKey:@"ha_background_type"];
+    if (self.backgroundTypeControl) {
+        self.backgroundTypeControl.selectedSegmentIndex = backgroundType;
+        [self backgroundTypeChanged:self.backgroundTypeControl];
+    }
+}
+
+- (void)saveCustomizationSettings {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    // Save dashboard background color
+    if (self.selectedDashboardColor) {
+        NSData *colorData = [NSKeyedArchiver archivedDataWithRootObject:self.selectedDashboardColor];
+        [defaults setObject:colorData forKey:@"ha_dashboard_background_color"];
+    }
+    
+    // Save navbar color
+    if (self.selectedNavbarColor) {
+        NSData *colorData = [NSKeyedArchiver archivedDataWithRootObject:self.selectedNavbarColor];
+        [defaults setObject:colorData forKey:@"ha_navbar_color"];
+    }
+    
+    // Save background image
+    if (self.selectedBackgroundImage) {
+        NSData *imageData = UIImageJPEGRepresentation(self.selectedBackgroundImage, 0.8);
+        [defaults setObject:imageData forKey:@"ha_background_image"];
+    }
+    
+    // Save background type
+    if (self.backgroundTypeControl) {
+        [defaults setInteger:self.backgroundTypeControl.selectedSegmentIndex forKey:@"ha_background_type"];
+    }
+}
+
+- (void)updateDashboardColorButton {
+    if (self.dashboardColorButton && self.selectedDashboardColor) {
+        self.dashboardColorButton.backgroundColor = self.selectedDashboardColor;
+        
+        // Show hex value on button
+        NSString *hexValue = [self hexStringFromColor:self.selectedDashboardColor];
+        [self.dashboardColorButton setTitle:hexValue forState:UIControlStateNormal];
+        [self.dashboardColorButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.dashboardColorButton.titleLabel.font = [UIFont systemFontOfSize:12];
+        
+        // Add text shadow for better readability
+        self.dashboardColorButton.titleLabel.shadowColor = [UIColor blackColor];
+        self.dashboardColorButton.titleLabel.shadowOffset = CGSizeMake(1, 1);
+    }
+    
+    if (self.dashboardColorLabel) {
+        self.dashboardColorLabel.text = @"Dashboard Background";
+    }
+}
+
+- (void)updateNavbarColorButton {
+    if (self.navbarColorButton && self.selectedNavbarColor) {
+        self.navbarColorButton.backgroundColor = self.selectedNavbarColor;
+        
+        // Show hex value on button
+        NSString *hexValue = [self hexStringFromColor:self.selectedNavbarColor];
+        [self.navbarColorButton setTitle:hexValue forState:UIControlStateNormal];
+        [self.navbarColorButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.navbarColorButton.titleLabel.font = [UIFont systemFontOfSize:12];
+        
+        // Add text shadow for better readability
+        self.navbarColorButton.titleLabel.shadowColor = [UIColor blackColor];
+        self.navbarColorButton.titleLabel.shadowOffset = CGSizeMake(1, 1);
+    }
+    
+    if (self.navbarColorLabel) {
+        self.navbarColorLabel.text = @"Navigation Bar Color";
+    }
+}
+
+- (NSString *)hexStringFromColor:(UIColor *)color {
+    CGFloat red, green, blue, alpha;
+    [color getRed:&red green:&green blue:&blue alpha:&alpha];
+    
+    int r = (int)(red * 255);
+    int g = (int)(green * 255);
+    int b = (int)(blue * 255);
+    
+    return [NSString stringWithFormat:@"#%02X%02X%02X", r, g, b];
+}
+
+#pragma mark - IBActions for Customization
+
+- (IBAction)dashboardColorButtonTapped:(id)sender {
+    [self showColorPickerForType:@"dashboard"];
+}
+
+- (IBAction)navbarColorButtonTapped:(id)sender {
+    [self showColorPickerForType:@"navbar"];
+}
+
+- (IBAction)backgroundImageButtonTapped:(id)sender {
+    [self showImagePicker];
+}
+
+- (IBAction)backgroundTypeChanged:(id)sender {
+    if (self.backgroundTypeControl) {
+        BOOL isImageMode = (self.backgroundTypeControl.selectedSegmentIndex == 1);
+        
+        // Enable/disable controls based on selected type
+        if (self.dashboardColorButton) {
+            self.dashboardColorButton.enabled = !isImageMode;
+            self.dashboardColorButton.alpha = isImageMode ? 0.5 : 1.0;
+        }
+        
+        if (self.backgroundImageButton) {
+            self.backgroundImageButton.enabled = isImageMode;
+            self.backgroundImageButton.alpha = isImageMode ? 1.0 : 0.5;
+        }
+        
+        if (self.dashboardColorLabel) {
+            self.dashboardColorLabel.textColor = isImageMode ? [UIColor lightGrayColor] : [UIColor darkTextColor];
+        }
+    }
+}
+
+#pragma mark - Color Picker
+
+- (void)showColorPickerForType:(NSString *)colorType {
+    // Create a custom color picker with hex input
+    UIAlertController *colorAlert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Choose %@ Color", [colorType capitalizedString]]
+                                                                        message:@"Select a predefined color or enter a hex value"
+                                                                 preferredStyle:UIAlertControllerStyleAlert];
+    
+    // Add text field for hex input
+    [colorAlert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"Enter hex color (e.g., #FF5733)";
+        textField.text = @"#";
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    }];
+    
+    // Custom hex color action
+    UIAlertAction *customColorAction = [UIAlertAction actionWithTitle:@"Use Hex Color"
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction *action) {
+        UITextField *hexField = colorAlert.textFields.firstObject;
+        NSString *hexString = [hexField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        
+        UIColor *customColor = [self colorFromHexString:hexString];
+        if (customColor) {
+            if ([colorType isEqualToString:@"dashboard"]) {
+                self.selectedDashboardColor = customColor;
+                [self updateDashboardColorButton];
+            } else if ([colorType isEqualToString:@"navbar"]) {
+                self.selectedNavbarColor = customColor;
+                [self updateNavbarColorButton];
+            }
+        } else {
+            // Show error if invalid hex
+            [self showInvalidHexColorAlert];
+        }
+    }];
+    
+    [colorAlert addAction:customColorAction];
+    
+    // Add separator
+    UIAlertAction *separatorAction = [UIAlertAction actionWithTitle:@"--- Predefined Colors ---"
+                                                              style:UIAlertActionStyleDefault
+                                                            handler:nil];
+    separatorAction.enabled = NO;
+    [colorAlert addAction:separatorAction];
+    
+    // Predefined colors with names
+    NSArray *colors = @[
+        @{@"name": @"Light Gray", @"color": [UIColor colorWithWhite:0.95 alpha:1.0]},
+        @{@"name": @"White", @"color": [UIColor whiteColor]},
+        @{@"name": @"Black", @"color": [UIColor blackColor]},
+        @{@"name": @"Blue", @"color": [UIColor colorWithRed:0.2 green:0.4 blue:0.8 alpha:1.0]},
+        @{@"name": @"Green", @"color": [UIColor colorWithRed:0.2 green:0.7 blue:0.3 alpha:1.0]},
+        @{@"name": @"Red", @"color": [UIColor colorWithRed:0.8 green:0.2 blue:0.2 alpha:1.0]},
+        @{@"name": @"Purple", @"color": [UIColor colorWithRed:0.6 green:0.2 blue:0.8 alpha:1.0]},
+        @{@"name": @"Orange", @"color": [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0]},
+        @{@"name": @"Dark Gray", @"color": [UIColor colorWithWhite:0.3 alpha:1.0]},
+        @{@"name": @"Navy Blue", @"color": [UIColor colorWithRed:0.1 green:0.2 blue:0.5 alpha:1.0]}
+    ];
+    
+    for (NSDictionary *colorInfo in colors) {
+        NSString *colorName = colorInfo[@"name"];
+        UIColor *color = colorInfo[@"color"];
+        
+        UIAlertAction *colorAction = [UIAlertAction actionWithTitle:colorName
+                                                              style:UIAlertActionStyleDefault
+                                                            handler:^(UIAlertAction *action) {
+            if ([colorType isEqualToString:@"dashboard"]) {
+                self.selectedDashboardColor = color;
+                [self updateDashboardColorButton];
+            } else if ([colorType isEqualToString:@"navbar"]) {
+                self.selectedNavbarColor = color;
+                [self updateNavbarColorButton];
+            }
+        }];
+        
+        [colorAlert addAction:colorAction];
+    }
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel"
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    [colorAlert addAction:cancelAction];
+    
+    // For iPad, set source view
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        colorAlert.popoverPresentationController.sourceView = ([colorType isEqualToString:@"dashboard"]) ? self.dashboardColorButton : self.navbarColorButton;
+        colorAlert.popoverPresentationController.sourceRect = ([colorType isEqualToString:@"dashboard"]) ? self.dashboardColorButton.bounds : self.navbarColorButton.bounds;
+    }
+    
+    [self presentViewController:colorAlert animated:YES completion:nil];
+}
+
+- (UIColor *)colorFromHexString:(NSString *)hexString {
+    // Remove # if present
+    if ([hexString hasPrefix:@"#"]) {
+        hexString = [hexString substringFromIndex:1];
+    }
+    
+    // Check for valid length
+    if (hexString.length != 6) {
+        return nil;
+    }
+    
+    // Check for valid hex characters
+    NSCharacterSet *hexCharSet = [NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEFabcdef"];
+    NSCharacterSet *invalidChars = [hexCharSet invertedSet];
+    if ([hexString rangeOfCharacterFromSet:invalidChars].location != NSNotFound) {
+        return nil;
+    }
+    
+    // Parse RGB components
+    unsigned int rgbValue = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:hexString];
+    [scanner scanHexInt:&rgbValue];
+    
+    CGFloat red = ((rgbValue & 0xFF0000) >> 16) / 255.0;
+    CGFloat green = ((rgbValue & 0x00FF00) >> 8) / 255.0;
+    CGFloat blue = (rgbValue & 0x0000FF) / 255.0;
+    
+    return [UIColor colorWithRed:red green:green blue:blue alpha:1.0];
+}
+
+- (void)showInvalidHexColorAlert {
+    UIAlertController *errorAlert = [UIAlertController alertControllerWithTitle:@"Invalid Hex Color"
+                                                                        message:@"Please enter a valid hex color code (e.g., #FF5733 or FF5733)"
+                                                                 preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK"
+                                                       style:UIAlertActionStyleDefault
+                                                     handler:nil];
+    [errorAlert addAction:okAction];
+    
+    [self presentViewController:errorAlert animated:YES completion:nil];
+}
+
+#pragma mark - Image Picker
+
+- (void)showImagePicker {
+    // Check photo library permission
+    PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatus];
+    
+    if (status == PHAuthorizationStatusNotDetermined) {
+        [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (status == PHAuthorizationStatusAuthorized) {
+                    [self presentImagePicker];
+                } else {
+                    [self showPhotoPermissionAlert];
+                }
+            });
+        }];
+    } else if (status == PHAuthorizationStatusAuthorized) {
+        [self presentImagePicker];
+    } else {
+        [self showPhotoPermissionAlert];
+    }
+}
+
+- (void)presentImagePicker {
+    UIImagePickerController *imagePicker = [[UIImagePickerController alloc] init];
+    imagePicker.delegate = self;
+    imagePicker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+    imagePicker.allowsEditing = YES;
+    
+    [self presentViewController:imagePicker animated:YES completion:nil];
+}
+
+- (void)showPhotoPermissionAlert {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Photo Access Required"
+                                                                   message:@"Please allow access to your photo library in Settings to use custom background images."
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *settingsAction = [UIAlertAction actionWithTitle:@"Settings"
+                                                             style:UIAlertActionStyleDefault
+                                                           handler:^(UIAlertAction *action) {
+        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString]];
+    }];
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel"
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    
+    [alert addAction:settingsAction];
+    [alert addAction:cancelAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - UIImagePickerControllerDelegate
+
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
+    UIImage *selectedImage = info[UIImagePickerControllerEditedImage];
+    if (!selectedImage) {
+        selectedImage = info[UIImagePickerControllerOriginalImage];
+    }
+    
+    if (selectedImage) {
+        // Resize image to reduce memory usage
+        self.selectedBackgroundImage = [self resizeImage:selectedImage toMaxSize:CGSizeMake(1024, 1024)];
+        
+        // Update the button to show a preview or checkmark
+        if (self.backgroundImageButton) {
+            [self.backgroundImageButton setTitle:@"✓ Image Selected" forState:UIControlStateNormal];
+        }
+    }
+    
+    [picker dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
+    [picker dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark - Image Utility
+
+- (UIImage *)resizeImage:(UIImage *)image toMaxSize:(CGSize)maxSize {
+    CGSize imageSize = image.size;
+    CGFloat ratio = MIN(maxSize.width / imageSize.width, maxSize.height / imageSize.height);
+    
+    if (ratio >= 1.0) {
+        return image; // No need to resize
+    }
+    
+    CGSize newSize = CGSizeMake(imageSize.width * ratio, imageSize.height * ratio);
+    
+    UIGraphicsBeginImageContextWithOptions(newSize, NO, 0.0);
+    [image drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
+    UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return resizedImage;
 }
 
 @end

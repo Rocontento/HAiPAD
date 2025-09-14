@@ -279,6 +279,60 @@
                                                     <action selector="gridRowsSliderChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="grid-rows-slider-action"/>
                                                 </connections>
                                             </slider>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Dashboard Customization" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="customization-section-label">
+                                                <rect key="frame" x="20" y="544" width="200" height="21"/>
+                                                <fontDescription key="fontDescription" type="boldSystem" pointSize="17"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="plain" selectedSegmentIndex="0" translatesAutoresizingMaskIntoConstraints="NO" id="background-type-control">
+                                                <rect key="frame" x="20" y="579" width="335" height="29"/>
+                                                <segments>
+                                                    <segment title="Color"/>
+                                                    <segment title="Image"/>
+                                                </segments>
+                                                <connections>
+                                                    <action selector="backgroundTypeChanged:" destination="daE-8z-kG5" eventType="valueChanged" id="background-type-action"/>
+                                                </connections>
+                                            </segmentedControl>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Dashboard Background" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dashboard-color-label">
+                                                <rect key="frame" x="20" y="623" width="160" height="21"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="dashboard-color-button">
+                                                <rect key="frame" x="20" y="652" width="80" height="40"/>
+                                                <color key="backgroundColor" white="0.95" alpha="1" colorSpace="calibratedWhite"/>
+                                                <state key="normal" title=""/>
+                                                <connections>
+                                                    <action selector="dashboardColorButtonTapped:" destination="daE-8z-kG5" eventType="touchUpInside" id="dashboard-color-action"/>
+                                                </connections>
+                                            </button>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Navigation Bar Color" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="navbar-color-label">
+                                                <rect key="frame" x="20" y="707" width="160" height="21"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="navbar-color-button">
+                                                <rect key="frame" x="20" y="736" width="80" height="40"/>
+                                                <color key="backgroundColor" white="0.98" alpha="1" colorSpace="calibratedWhite"/>
+                                                <state key="normal" title=""/>
+                                                <connections>
+                                                    <action selector="navbarColorButtonTapped:" destination="daE-8z-kG5" eventType="touchUpInside" id="navbar-color-action"/>
+                                                </connections>
+                                            </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="background-image-button">
+                                                <rect key="frame" x="20" y="791" width="335" height="44"/>
+                                                <color key="backgroundColor" red="0.2" green="0.6" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                                <state key="normal" title="Select Background Image">
+                                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                                </state>
+                                                <connections>
+                                                    <action selector="backgroundImageButtonTapped:" destination="daE-8z-kG5" eventType="touchUpInside" id="background-image-action"/>
+                                                </connections>
+                                            </button>
                                         </subviews>
                                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                         <constraints>
@@ -313,6 +367,28 @@
                                             <constraint firstItem="grid-rows-slider" firstAttribute="top" secondItem="grid-rows-label" secondAttribute="bottom" constant="8" id="grid-rows-slider-top"/>
                                             <constraint firstItem="grid-rows-slider" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="grid-rows-slider-lead"/>
                                             <constraint firstAttribute="trailing" secondItem="grid-rows-slider" secondAttribute="trailing" constant="20" id="grid-rows-slider-trail"/>
+                                            <constraint firstItem="customization-section-label" firstAttribute="top" secondItem="grid-rows-slider" secondAttribute="bottom" constant="30" id="customization-section-top"/>
+                                            <constraint firstItem="customization-section-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="customization-section-lead"/>
+                                            <constraint firstItem="background-type-control" firstAttribute="top" secondItem="customization-section-label" secondAttribute="bottom" constant="15" id="background-type-top"/>
+                                            <constraint firstItem="background-type-control" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="background-type-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="background-type-control" secondAttribute="trailing" constant="20" id="background-type-trail"/>
+                                            <constraint firstItem="dashboard-color-label" firstAttribute="top" secondItem="background-type-control" secondAttribute="bottom" constant="15" id="dashboard-color-label-top"/>
+                                            <constraint firstItem="dashboard-color-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="dashboard-color-label-lead"/>
+                                            <constraint firstItem="dashboard-color-button" firstAttribute="top" secondItem="dashboard-color-label" secondAttribute="bottom" constant="8" id="dashboard-color-button-top"/>
+                                            <constraint firstItem="dashboard-color-button" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="dashboard-color-button-lead"/>
+                                            <constraint firstItem="dashboard-color-button" firstAttribute="width" constant="80" id="dashboard-color-button-width"/>
+                                            <constraint firstItem="dashboard-color-button" firstAttribute="height" constant="40" id="dashboard-color-button-height"/>
+                                            <constraint firstItem="navbar-color-label" firstAttribute="top" secondItem="dashboard-color-button" secondAttribute="bottom" constant="15" id="navbar-color-label-top"/>
+                                            <constraint firstItem="navbar-color-label" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="navbar-color-label-lead"/>
+                                            <constraint firstItem="navbar-color-button" firstAttribute="top" secondItem="navbar-color-label" secondAttribute="bottom" constant="8" id="navbar-color-button-top"/>
+                                            <constraint firstItem="navbar-color-button" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="navbar-color-button-lead"/>
+                                            <constraint firstItem="navbar-color-button" firstAttribute="width" constant="80" id="navbar-color-button-width"/>
+                                            <constraint firstItem="navbar-color-button" firstAttribute="height" constant="40" id="navbar-color-button-height"/>
+                                            <constraint firstItem="background-image-button" firstAttribute="top" secondItem="navbar-color-button" secondAttribute="bottom" constant="15" id="background-image-button-top"/>
+                                            <constraint firstItem="background-image-button" firstAttribute="leading" secondItem="iCG-Nh-3bd" secondAttribute="leading" constant="20" id="background-image-button-lead"/>
+                                            <constraint firstAttribute="trailing" secondItem="background-image-button" secondAttribute="trailing" constant="20" id="background-image-button-trail"/>
+                                            <constraint firstItem="background-image-button" firstAttribute="height" constant="44" id="background-image-button-height"/>
+                                            <constraint firstAttribute="bottom" secondItem="background-image-button" secondAttribute="bottom" constant="30" id="content-bottom"/>
                                         </constraints>
                                     </view>
                                 </subviews>
@@ -345,6 +421,12 @@
                         <outlet property="gridColumnsLabel" destination="grid-columns-label" id="grid-columns-label-outlet"/>
                         <outlet property="gridRowsSlider" destination="grid-rows-slider" id="grid-rows-slider-outlet"/>
                         <outlet property="gridRowsLabel" destination="grid-rows-label" id="grid-rows-label-outlet"/>
+                        <outlet property="dashboardColorButton" destination="dashboard-color-button" id="dashboard-color-button-outlet"/>
+                        <outlet property="navbarColorButton" destination="navbar-color-button" id="navbar-color-button-outlet"/>
+                        <outlet property="backgroundImageButton" destination="background-image-button" id="background-image-button-outlet"/>
+                        <outlet property="backgroundTypeControl" destination="background-type-control" id="background-type-control-outlet"/>
+                        <outlet property="dashboardColorLabel" destination="dashboard-color-label" id="dashboard-color-label-outlet"/>
+                        <outlet property="navbarColorLabel" destination="navbar-color-label" id="navbar-color-label-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Zio-cy-Dou" sceneMemberID="firstResponder"/>
