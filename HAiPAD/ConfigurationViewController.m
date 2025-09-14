@@ -53,6 +53,49 @@
     self.statusLabel.text = @"Enter your Home Assistant URL and access token";
     self.statusLabel.textColor = [UIColor grayColor];
     self.statusLabel.numberOfLines = 0;
+    
+    // Create grid size segmented control if not connected via Interface Builder
+    [self setupGridSizeControl];
+}
+
+- (void)setupGridSizeControl {
+    // If the grid size control is not connected via Interface Builder, create it programmatically
+    if (!self.gridSizeSegmentedControl) {
+        NSArray *gridSizeOptions = @[@"Small (3×4)", @"Medium (4×6)", @"Large (5×8)"];
+        self.gridSizeSegmentedControl = [[UISegmentedControl alloc] initWithItems:gridSizeOptions];
+        
+        // Position below the columns control (approximate positioning)
+        CGRect columnsFrame = self.columnsSegmentedControl.frame;
+        CGRect gridSizeFrame = CGRectMake(
+            columnsFrame.origin.x,
+            columnsFrame.origin.y + columnsFrame.size.height + 20,
+            columnsFrame.size.width,
+            columnsFrame.size.height
+        );
+        self.gridSizeSegmentedControl.frame = gridSizeFrame;
+        
+        // Style to match existing controls
+        self.gridSizeSegmentedControl.tintColor = self.columnsSegmentedControl.tintColor;
+        
+        // Add to view
+        [self.view addSubview:self.gridSizeSegmentedControl];
+        
+        // Add label
+        UILabel *gridSizeLabel = [[UILabel alloc] init];
+        gridSizeLabel.text = @"Grid Size:";
+        gridSizeLabel.font = [UIFont systemFontOfSize:16];
+        gridSizeLabel.textColor = [UIColor blackColor];
+        
+        CGRect labelFrame = CGRectMake(
+            gridSizeFrame.origin.x,
+            gridSizeFrame.origin.y - 25,
+            gridSizeFrame.size.width,
+            20
+        );
+        gridSizeLabel.frame = labelFrame;
+        
+        [self.view addSubview:gridSizeLabel];
+    }
 }
 
 - (void)loadConfiguration {
@@ -84,7 +127,9 @@
     }
     
     // Set grid size segmented control (0=Small 3x4, 1=Medium 4x6, 2=Large 5x8)
-    self.gridSizeSegmentedControl.selectedSegmentIndex = gridSizeIndex;
+    if (self.gridSizeSegmentedControl) {
+        self.gridSizeSegmentedControl.selectedSegmentIndex = gridSizeIndex;
+    }
 }
 
 #pragma mark - IBActions
@@ -124,7 +169,10 @@
     [defaults setInteger:columnCount forKey:@"ha_column_count"];
     
     // Save grid size preference (index 0=Small 3x4, 1=Medium 4x6, 2=Large 5x8)
-    NSInteger gridSizeIndex = self.gridSizeSegmentedControl.selectedSegmentIndex;
+    NSInteger gridSizeIndex = 1; // Default to medium
+    if (self.gridSizeSegmentedControl) {
+        gridSizeIndex = self.gridSizeSegmentedControl.selectedSegmentIndex;
+    }
     [defaults setInteger:gridSizeIndex forKey:@"ha_grid_size"];
     
     [defaults synchronize];

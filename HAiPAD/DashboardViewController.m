@@ -85,6 +85,10 @@
     // Add refresh control to collection view
     [self.collectionView addSubview:self.refreshControl];
     [self.collectionView sendSubviewToBack:self.refreshControl];
+    
+    // Add edit button to navigation bar
+    self.editBarButton = [[UIBarButtonItem alloc] initWithTitle:@"Edit" style:UIBarButtonItemStylePlain target:self action:@selector(editButtonTapped:)];
+    self.navigationItem.rightBarButtonItem = self.editBarButton;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -174,6 +178,26 @@
 
     UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:entitiesVC];
     [self presentViewController:navController animated:YES completion:nil];
+}
+
+- (IBAction)editButtonTapped:(id)sender {
+    // Toggle edit mode
+    [self setEditingMode:!self.editingMode];
+    
+    // Update button title
+    if (self.editingMode) {
+        self.editBarButton.title = @"Done";
+        
+        // Show instruction to user
+        self.statusLabel.text = @"Drag cards to move • Drag resize handles to resize";
+        self.statusLabel.textColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+    } else {
+        self.editBarButton.title = @"Edit";
+        
+        // Restore normal status
+        self.statusLabel.text = @"Connected";
+        self.statusLabel.textColor = [UIColor colorWithRed:0.0 green:0.7 blue:0.0 alpha:1.0];
+    }
 }
 
 - (void)filterEntitiesBasedOnSettings {
