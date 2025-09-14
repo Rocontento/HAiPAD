@@ -39,11 +39,15 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    NSLog(@"Popup: viewDidLoad called");
+    
     self.actionButtons = [NSMutableArray array];
     [self setupBackgroundOverlay];
     [self setupPopupContainer];
     [self setupContentBasedOnType];
     [self layoutPopupContent];
+    
+    NSLog(@"Popup: viewDidLoad completed");
 }
 
 - (void)setupBackgroundOverlay {
@@ -83,7 +87,7 @@
     self.popupContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.popupContainer];
     
-    // Center the popup and set max dimensions
+    // Center the popup and set dimensions with minimum height
     [NSLayoutConstraint activateConstraints:@[
         [self.popupContainer.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.popupContainer.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
@@ -91,20 +95,16 @@
         [self.popupContainer.widthAnchor constraintGreaterThanOrEqualToConstant:280.0],
         [self.popupContainer.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:20.0],
         [self.popupContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-20.0],
-        [self.popupContainer.heightAnchor constraintLessThanOrEqualToConstant:500.0]
+        [self.popupContainer.heightAnchor constraintLessThanOrEqualToConstant:500.0],
+        [self.popupContainer.heightAnchor constraintGreaterThanOrEqualToConstant:200.0] // Ensure minimum height
     ]];
 }
 
 - (void)setupContentBasedOnType {
-    // Setup scroll view for content
-    self.contentScrollView = [[UIScrollView alloc] init];
-    self.contentScrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.popupContainer addSubview:self.contentScrollView];
-    
-    // Content view inside scroll view
+    // Content view directly in popup container (without scroll view for now)
     self.contentView = [[UIView alloc] init];
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentScrollView addSubview:self.contentView];
+    [self.popupContainer addSubview:self.contentView];
     
     // Title label
     self.titleLabel = [[UILabel alloc] init];
@@ -121,6 +121,7 @@
     
     // Add debugging
     NSLog(@"Popup: Setting title to: %@", friendlyName);
+    NSLog(@"Popup: Entity data: %@", self.entity);
     
     // Button container
     self.buttonContainer = [[UIView alloc] init];
@@ -148,24 +149,15 @@
 }
 
 - (void)layoutPopupContent {
-    // Layout scroll view
+    // Layout content view directly in popup container
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentScrollView.topAnchor constraintEqualToAnchor:self.popupContainer.topAnchor constant:20.0],
-        [self.contentScrollView.leadingAnchor constraintEqualToAnchor:self.popupContainer.leadingAnchor constant:20.0],
-        [self.contentScrollView.trailingAnchor constraintEqualToAnchor:self.popupContainer.trailingAnchor constant:-20.0],
-        [self.contentScrollView.bottomAnchor constraintEqualToAnchor:self.popupContainer.bottomAnchor constant:-20.0]
+        [self.contentView.topAnchor constraintEqualToAnchor:self.popupContainer.topAnchor constant:20.0],
+        [self.contentView.leadingAnchor constraintEqualToAnchor:self.popupContainer.leadingAnchor constant:20.0],
+        [self.contentView.trailingAnchor constraintEqualToAnchor:self.popupContainer.trailingAnchor constant:-20.0],
+        [self.contentView.bottomAnchor constraintEqualToAnchor:self.popupContainer.bottomAnchor constant:-20.0]
     ]];
     
-    // Layout content view
-    [NSLayoutConstraint activateConstraints:@[
-        [self.contentView.topAnchor constraintEqualToAnchor:self.contentScrollView.topAnchor],
-        [self.contentView.leadingAnchor constraintEqualToAnchor:self.contentScrollView.leadingAnchor],
-        [self.contentView.trailingAnchor constraintEqualToAnchor:self.contentScrollView.trailingAnchor],
-        [self.contentView.bottomAnchor constraintEqualToAnchor:self.contentScrollView.bottomAnchor],
-        [self.contentView.widthAnchor constraintEqualToAnchor:self.contentScrollView.widthAnchor]
-    ]];
-    
-    // Layout title
+    // Layout title with proper constraints
     [NSLayoutConstraint activateConstraints:@[
         [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -178,6 +170,8 @@
         [self.buttonContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.buttonContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]
     ]];
+    
+    NSLog(@"Popup: Layout constraints applied (simplified)");
 }
 
 #pragma mark - Content Setup Methods
@@ -218,7 +212,7 @@
     NSLog(@"PopupInfo: InfoLabel textColor: %@", infoLabel.textColor);
     NSLog(@"PopupInfo: InfoLabel font: %@", infoLabel.font);
     
-    // Layout info label
+    // Layout info label - simplified constraints
     [NSLayoutConstraint activateConstraints:@[
         [infoLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
         [infoLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -228,6 +222,8 @@
     
     // Add OK button
     [self addActionButton:@"OK" style:CustomPopupButtonStylePrimary action:@"dismiss"];
+    
+    NSLog(@"PopupInfo: Content setup completed");
 }
 
 - (void)setupClimateControlContent {
@@ -517,6 +513,8 @@
 #pragma mark - Presentation/Dismissal
 
 - (void)presentFromViewController:(UIViewController *)viewController animated:(BOOL)animated {
+    NSLog(@"Popup: presentFromViewController called");
+    
     // Present as overlay
     self.modalPresentationStyle = UIModalPresentationOverCurrentContext;
     self.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
@@ -529,12 +527,32 @@
     }
     
     [viewController presentViewController:self animated:NO completion:^{
+        NSLog(@"Popup: Presentation completed, starting animation");
+        
         if (animated) {
             [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.8 initialSpringVelocity:0.0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                 self.popupContainer.alpha = 1.0;
                 self.popupContainer.transform = CGAffineTransformIdentity;
                 self.backgroundOverlay.alpha = 1.0;
-            } completion:nil];
+            } completion:^(BOOL finished) {
+                NSLog(@"Popup: Animation completed");
+                
+                // Force layout after animation
+                [self.view layoutIfNeeded];
+                
+                // Debug current frame sizes
+                NSLog(@"Popup: Final popup container frame: %@", NSStringFromCGRect(self.popupContainer.frame));
+                NSLog(@"Popup: Final content view frame: %@", NSStringFromCGRect(self.contentView.frame));
+                NSLog(@"Popup: Final title label frame: %@", NSStringFromCGRect(self.titleLabel.frame));
+            }];
+        } else {
+            // Force layout for non-animated case
+            [self.view layoutIfNeeded];
+            
+            // Debug current frame sizes
+            NSLog(@"Popup: Final popup container frame: %@", NSStringFromCGRect(self.popupContainer.frame));
+            NSLog(@"Popup: Final content view frame: %@", NSStringFromCGRect(self.contentView.frame));
+            NSLog(@"Popup: Final title label frame: %@", NSStringFromCGRect(self.titleLabel.frame));
         }
     }];
 }
