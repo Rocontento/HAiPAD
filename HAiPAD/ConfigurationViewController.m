@@ -462,7 +462,16 @@
 - (void)updateDashboardColorButton {
     if (self.dashboardColorButton && self.selectedDashboardColor) {
         self.dashboardColorButton.backgroundColor = self.selectedDashboardColor;
-        [self.dashboardColorButton setTitle:@"" forState:UIControlStateNormal];
+        
+        // Show hex value on button
+        NSString *hexValue = [self hexStringFromColor:self.selectedDashboardColor];
+        [self.dashboardColorButton setTitle:hexValue forState:UIControlStateNormal];
+        [self.dashboardColorButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.dashboardColorButton.titleLabel.font = [UIFont systemFontOfSize:12];
+        
+        // Add text shadow for better readability
+        self.dashboardColorButton.titleLabel.shadowColor = [UIColor blackColor];
+        self.dashboardColorButton.titleLabel.shadowOffset = CGSizeMake(1, 1);
     }
     
     if (self.dashboardColorLabel) {
@@ -473,12 +482,32 @@
 - (void)updateNavbarColorButton {
     if (self.navbarColorButton && self.selectedNavbarColor) {
         self.navbarColorButton.backgroundColor = self.selectedNavbarColor;
-        [self.navbarColorButton setTitle:@"" forState:UIControlStateNormal];
+        
+        // Show hex value on button
+        NSString *hexValue = [self hexStringFromColor:self.selectedNavbarColor];
+        [self.navbarColorButton setTitle:hexValue forState:UIControlStateNormal];
+        [self.navbarColorButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.navbarColorButton.titleLabel.font = [UIFont systemFontOfSize:12];
+        
+        // Add text shadow for better readability
+        self.navbarColorButton.titleLabel.shadowColor = [UIColor blackColor];
+        self.navbarColorButton.titleLabel.shadowOffset = CGSizeMake(1, 1);
     }
     
     if (self.navbarColorLabel) {
         self.navbarColorLabel.text = @"Navigation Bar Color";
     }
+}
+
+- (NSString *)hexStringFromColor:(UIColor *)color {
+    CGFloat red, green, blue, alpha;
+    [color getRed:&red green:&green blue:&blue alpha:&alpha];
+    
+    int r = (int)(red * 255);
+    int g = (int)(green * 255);
+    int b = (int)(blue * 255);
+    
+    return [NSString stringWithFormat:@"#%02X%02X%02X", r, g, b];
 }
 
 #pragma mark - IBActions for Customization
@@ -519,10 +548,48 @@
 #pragma mark - Color Picker
 
 - (void)showColorPickerForType:(NSString *)colorType {
-    // Create a simple color picker using alert with predefined colors
+    // Create a custom color picker with hex input
     UIAlertController *colorAlert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Choose %@ Color", [colorType capitalizedString]]
-                                                                        message:@"Select a color for customization"
-                                                                 preferredStyle:UIAlertControllerStyleActionSheet];
+                                                                        message:@"Select a predefined color or enter a hex value"
+                                                                 preferredStyle:UIAlertControllerStyleAlert];
+    
+    // Add text field for hex input
+    [colorAlert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"Enter hex color (e.g., #FF5733)";
+        textField.text = @"#";
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    }];
+    
+    // Custom hex color action
+    UIAlertAction *customColorAction = [UIAlertAction actionWithTitle:@"Use Hex Color"
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction *action) {
+        UITextField *hexField = colorAlert.textFields.firstObject;
+        NSString *hexString = [hexField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        
+        UIColor *customColor = [self colorFromHexString:hexString];
+        if (customColor) {
+            if ([colorType isEqualToString:@"dashboard"]) {
+                self.selectedDashboardColor = customColor;
+                [self updateDashboardColorButton];
+            } else if ([colorType isEqualToString:@"navbar"]) {
+                self.selectedNavbarColor = customColor;
+                [self updateNavbarColorButton];
+            }
+        } else {
+            // Show error if invalid hex
+            [self showInvalidHexColorAlert];
+        }
+    }];
+    
+    [colorAlert addAction:customColorAction];
+    
+    // Add separator
+    UIAlertAction *separatorAction = [UIAlertAction actionWithTitle:@"--- Predefined Colors ---"
+                                                              style:UIAlertActionStyleDefault
+                                                            handler:nil];
+    separatorAction.enabled = NO;
+    [colorAlert addAction:separatorAction];
     
     // Predefined colors with names
     NSArray *colors = @[
@@ -569,6 +636,49 @@
     }
     
     [self presentViewController:colorAlert animated:YES completion:nil];
+}
+
+- (UIColor *)colorFromHexString:(NSString *)hexString {
+    // Remove # if present
+    if ([hexString hasPrefix:@"#"]) {
+        hexString = [hexString substringFromIndex:1];
+    }
+    
+    // Check for valid length
+    if (hexString.length != 6) {
+        return nil;
+    }
+    
+    // Check for valid hex characters
+    NSCharacterSet *hexCharSet = [NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEFabcdef"];
+    NSCharacterSet *invalidChars = [hexCharSet invertedSet];
+    if ([hexString rangeOfCharacterFromSet:invalidChars].location != NSNotFound) {
+        return nil;
+    }
+    
+    // Parse RGB components
+    unsigned int rgbValue = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:hexString];
+    [scanner scanHexInt:&rgbValue];
+    
+    CGFloat red = ((rgbValue & 0xFF0000) >> 16) / 255.0;
+    CGFloat green = ((rgbValue & 0x00FF00) >> 8) / 255.0;
+    CGFloat blue = (rgbValue & 0x0000FF) / 255.0;
+    
+    return [UIColor colorWithRed:red green:green blue:blue alpha:1.0];
+}
+
+- (void)showInvalidHexColorAlert {
+    UIAlertController *errorAlert = [UIAlertController alertControllerWithTitle:@"Invalid Hex Color"
+                                                                        message:@"Please enter a valid hex color code (e.g., #FF5733 or FF5733)"
+                                                                 preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK"
+                                                       style:UIAlertActionStyleDefault
+                                                     handler:nil];
+    [errorAlert addAction:okAction];
+    
+    [self presentViewController:errorAlert animated:YES completion:nil];
 }
 
 #pragma mark - Image Picker

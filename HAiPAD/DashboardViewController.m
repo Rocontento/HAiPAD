@@ -137,6 +137,15 @@
     }
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    
+    // Reapply background image after layout to ensure proper scaling
+    if (self.backgroundType == 1 && self.backgroundImage) {
+        [self applyBackgroundImage];
+    }
+}
+
 - (void)loadConfiguration {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSString *baseURL = [defaults stringForKey:@"ha_base_url"];
@@ -1228,16 +1237,16 @@
     backgroundImageView.clipsToBounds = YES;
     backgroundImageView.tag = 9999; // Tag for easy identification
     
-    // Insert background image view behind all other views
-    [self.collectionView insertSubview:backgroundImageView atIndex:0];
+    // Insert background image view behind all other views but above the collection view background
+    [self.view insertSubview:backgroundImageView belowSubview:self.collectionView];
     
-    // Set up auto layout constraints
+    // Set up auto layout constraints to fill the entire view (not just collection view)
     backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
-        [backgroundImageView.topAnchor constraintEqualToAnchor:self.collectionView.topAnchor],
-        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.collectionView.leadingAnchor],
-        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.collectionView.trailingAnchor],
-        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.collectionView.bottomAnchor]
+        [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
     
     // Make collection view background transparent to show the image
@@ -1245,10 +1254,16 @@
 }
 
 - (void)removeBackgroundImageView {
-    // Find and remove any existing background image view
-    UIView *existingBackgroundView = [self.collectionView viewWithTag:9999];
+    // Find and remove any existing background image view from main view
+    UIView *existingBackgroundView = [self.view viewWithTag:9999];
     if (existingBackgroundView) {
         [existingBackgroundView removeFromSuperview];
+    }
+    
+    // Also check collection view for any old background views
+    UIView *existingCollectionBgView = [self.collectionView viewWithTag:9999];
+    if (existingCollectionBgView) {
+        [existingCollectionBgView removeFromSuperview];
     }
 }
 
