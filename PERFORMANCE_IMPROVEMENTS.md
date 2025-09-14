@@ -67,8 +67,37 @@ Advanced users can customize performance via NSUserDefaults:
 3. **WebSocket Connection**: Check console for "WebSocket connected" message
 4. **Smooth Performance**: No lag during normal operations
 
+## Compatibility
+
+### iOS Version Support
+
+The real-time improvements are designed to work across all supported iOS versions:
+
+- **iOS 13.0+**: Full WebSocket + HTTP polling for maximum performance
+- **iOS 9.3-12.x**: HTTP polling only (WebSocket automatically disabled)
+- **All versions**: Faster service call response and optimistic UI updates
+
+### Automatic Fallback
+
+The app automatically detects iOS version capabilities:
+
+```objective-c
+// WebSocket only available on iOS 13+
+BOOL wsAvailable = [[HomeAssistantClient sharedClient] isWebSocketAvailable];
+if (!wsAvailable) {
+    NSLog(@"Using HTTP polling fallback for iOS < 13.0");
+}
+```
+
+On older iOS versions, the app will:
+- Log "WebSocket not available on iOS < 13.0, using HTTP polling only"
+- Use faster HTTP polling (2-second intervals by default)
+- Still provide 5x faster service call response times
+- Maintain optimistic UI updates for instant feedback
+
 ## Troubleshooting
 
+- **App crashes on iOS < 13**: Fixed with automatic WebSocket API detection
 - **Slow updates**: Reduce auto refresh interval to 1.0 seconds
 - **High battery usage**: Increase interval to 5.0 seconds or disable WebSocket
 - **Connection issues**: Temporarily disable WebSocket, check Home Assistant logs

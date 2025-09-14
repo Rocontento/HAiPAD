@@ -8,10 +8,15 @@
 
 #import "HomeAssistantClient.h"
 
-@interface HomeAssistantClient () <NSURLSessionWebSocketDelegate>
+@interface HomeAssistantClient ()
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+<NSURLSessionWebSocketDelegate>
+#endif
 @property (nonatomic, strong) NSURLSession *urlSession;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
 @property (nonatomic, strong) NSURLSession *webSocketSession;
 @property (nonatomic, strong) NSURLSessionWebSocketTask *webSocketTask;
+#endif
 @property (nonatomic, assign) BOOL isConnected;
 @property (nonatomic, assign) BOOL webSocketConnected;
 @property (nonatomic, strong) NSTimer *autoRefreshTimer;
@@ -52,9 +57,13 @@
         _websocketId = 1;
         _entitiesState = [NSMutableDictionary dictionary];
         
-        // Create WebSocket session
-        NSURLSessionConfiguration *wsConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
-        _webSocketSession = [NSURLSession sessionWithConfiguration:wsConfig delegate:self delegateQueue:nil];
+        // Create WebSocket session only on iOS 13+
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+        if (@available(iOS 13.0, *)) {
+            NSURLSessionConfiguration *wsConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
+            _webSocketSession = [NSURLSession sessionWithConfiguration:wsConfig delegate:self delegateQueue:nil];
+        }
+#endif
     }
     return self;
 }
@@ -301,35 +310,52 @@
 }
 
 - (void)connectWebSocket {
-    if (self.webSocketTask) {
-        return; // Already connecting or connected
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        if (self.webSocketTask) {
+            return; // Already connecting or connected
+        }
+        
+        if (!self.webSocketSession) {
+            NSLog(@"WebSocket session not available");
+            return;
+        }
+        
+        // Try to construct WebSocket URL
+        NSString *wsURL = [self.baseURL stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
+        wsURL = [wsURL stringByReplacingOccurrencesOfString:@"https://" withString:@"wss://"];
+        wsURL = [wsURL stringByAppendingString:@"/api/websocket"];
+        
+        NSURL *url = [NSURL URLWithString:wsURL];
+        if (!url) {
+            NSLog(@"Failed to create WebSocket URL from: %@", self.baseURL);
+            return;
+        }
+        
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        
+        self.webSocketTask = [self.webSocketSession webSocketTaskWithRequest:request];
+        [self.webSocketTask resume];
+        
+        // Start receiving messages
+        [self receiveWebSocketMessage];
+    } else {
+        NSLog(@"WebSocket not available on iOS < 13.0, using HTTP polling only");
     }
-    
-    // Try to construct WebSocket URL
-    NSString *wsURL = [self.baseURL stringByReplacingOccurrencesOfString:@"http://" withString:@"ws://"];
-    wsURL = [wsURL stringByReplacingOccurrencesOfString:@"https://" withString:@"wss://"];
-    wsURL = [wsURL stringByAppendingString:@"/api/websocket"];
-    
-    NSURL *url = [NSURL URLWithString:wsURL];
-    if (!url) {
-        NSLog(@"Failed to create WebSocket URL from: %@", self.baseURL);
-        return;
-    }
-    
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    
-    self.webSocketTask = [self.webSocketSession webSocketTaskWithRequest:request];
-    [self.webSocketTask resume];
-    
-    // Start receiving messages
-    [self receiveWebSocketMessage];
+#else
+    NSLog(@"WebSocket not available on iOS < 13.0, using HTTP polling only");
+#endif
 }
 
 - (void)disconnectWebSocket {
-    if (self.webSocketTask) {
-        [self.webSocketTask cancelWithCloseCode:NSURLSessionWebSocketCloseCodeNormalClosure reason:nil];
-        self.webSocketTask = nil;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        if (self.webSocketTask) {
+            [self.webSocketTask cancelWithCloseCode:NSURLSessionWebSocketCloseCodeNormalClosure reason:nil];
+            self.webSocketTask = nil;
+        }
     }
+#endif
     self.webSocketConnected = NO;
     
     // Stop reconnection timer
@@ -340,21 +366,25 @@
 }
 
 - (void)receiveWebSocketMessage {
-    if (!self.webSocketTask) return;
-    
-    [self.webSocketTask receiveMessageWithCompletionHandler:^(NSURLSessionWebSocketMessage *message, NSError *error) {
-        if (error) {
-            NSLog(@"WebSocket receive error: %@", error.localizedDescription);
-            return;
-        }
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        if (!self.webSocketTask) return;
         
-        if (message.type == NSURLSessionWebSocketMessageTypeString) {
-            [self handleWebSocketMessage:message.string];
-        }
-        
-        // Continue receiving messages
-        [self receiveWebSocketMessage];
-    }];
+        [self.webSocketTask receiveMessageWithCompletionHandler:^(NSURLSessionWebSocketMessage *message, NSError *error) {
+            if (error) {
+                NSLog(@"WebSocket receive error: %@", error.localizedDescription);
+                return;
+            }
+            
+            if (message.type == NSURLSessionWebSocketMessageTypeString) {
+                [self handleWebSocketMessage:message.string];
+            }
+            
+            // Continue receiving messages
+            [self receiveWebSocketMessage];
+        }];
+    }
+#endif
 }
 
 - (void)handleWebSocketMessage:(NSString *)message {
@@ -385,46 +415,54 @@
 }
 
 - (void)sendWebSocketAuth {
-    if (!self.webSocketTask) return;
-    
-    NSDictionary *authMessage = @{
-        @"type": @"auth",
-        @"access_token": self.accessToken
-    };
-    
-    NSError *error;
-    NSData *data = [NSJSONSerialization dataWithJSONObject:authMessage options:0 error:&error];
-    if (!error) {
-        NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
-        [self.webSocketTask sendMessage:message completionHandler:^(NSError *error) {
-            if (error) {
-                NSLog(@"Failed to send auth message: %@", error.localizedDescription);
-            }
-        }];
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        if (!self.webSocketTask) return;
+        
+        NSDictionary *authMessage = @{
+            @"type": @"auth",
+            @"access_token": self.accessToken
+        };
+        
+        NSError *error;
+        NSData *data = [NSJSONSerialization dataWithJSONObject:authMessage options:0 error:&error];
+        if (!error) {
+            NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
+            [self.webSocketTask sendMessage:message completionHandler:^(NSError *error) {
+                if (error) {
+                    NSLog(@"Failed to send auth message: %@", error.localizedDescription);
+                }
+            }];
+        }
     }
+#endif
 }
 
 - (void)subscribeToStateChanges {
-    if (!self.webSocketTask) return;
-    
-    NSDictionary *subscribeMessage = @{
-        @"id": @(self.websocketId++),
-        @"type": @"subscribe_events",
-        @"event_type": @"state_changed"
-    };
-    
-    NSError *error;
-    NSData *data = [NSJSONSerialization dataWithJSONObject:subscribeMessage options:0 error:&error];
-    if (!error) {
-        NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
-        [self.webSocketTask sendMessage:message completionHandler:^(NSError *error) {
-            if (error) {
-                NSLog(@"Failed to send subscribe message: %@", error.localizedDescription);
-            }
-        }];
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        if (!self.webSocketTask) return;
+        
+        NSDictionary *subscribeMessage = @{
+            @"id": @(self.websocketId++),
+            @"type": @"subscribe_events",
+            @"event_type": @"state_changed"
+        };
+        
+        NSError *error;
+        NSData *data = [NSJSONSerialization dataWithJSONObject:subscribeMessage options:0 error:&error];
+        if (!error) {
+            NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
+            [self.webSocketTask sendMessage:message completionHandler:^(NSError *error) {
+                if (error) {
+                    NSLog(@"Failed to send subscribe message: %@", error.localizedDescription);
+                }
+            }];
+        }
     }
+#endif
 }
 
 - (void)handleStateChangeEvent:(NSDictionary *)eventData {
@@ -464,33 +502,54 @@
 }
 
 - (BOOL)isWebSocketEnabled {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if ([defaults objectForKey:@"ha_websocket_enabled"]) {
-        return [defaults boolForKey:@"ha_websocket_enabled"];
+    // First check if WebSocket APIs are available (iOS 13+)
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if ([defaults objectForKey:@"ha_websocket_enabled"]) {
+            return [defaults boolForKey:@"ha_websocket_enabled"];
+        }
+        return YES; // Default enabled on supported iOS versions
     }
-    return YES; // Default enabled
+#endif
+    return NO; // WebSocket not available on iOS < 13
+}
+
+- (BOOL)isWebSocketAvailable {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        return YES;
+    }
+#endif
+    return NO;
 }
 
 #pragma mark - NSURLSessionWebSocketDelegate
 
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
 - (void)URLSession:(NSURLSession *)session webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask didOpenWithProtocol:(NSString *)protocol {
-    NSLog(@"WebSocket connected");
+    if (@available(iOS 13.0, *)) {
+        NSLog(@"WebSocket connected");
+    }
 }
 
 - (void)URLSession:(NSURLSession *)session webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask didCloseWithCode:(NSURLSessionWebSocketCloseCode)closeCode reason:(NSData *)reason {
-    NSLog(@"WebSocket disconnected with code: %ld", (long)closeCode);
-    self.webSocketConnected = NO;
-    self.webSocketTask = nil;
-    
-    // Try to reconnect after a delay if we were previously connected
-    if (self.isConnected && closeCode != NSURLSessionWebSocketCloseCodeNormalClosure) {
-        self.reconnectTimer = [NSTimer scheduledTimerWithTimeInterval:5.0
-                                                               target:self
-                                                             selector:@selector(reconnectWebSocket:)
-                                                             userInfo:nil
-                                                              repeats:NO];
+    if (@available(iOS 13.0, *)) {
+        NSLog(@"WebSocket disconnected with code: %ld", (long)closeCode);
+        self.webSocketConnected = NO;
+        self.webSocketTask = nil;
+        
+        // Try to reconnect after a delay if we were previously connected
+        if (self.isConnected && closeCode != NSURLSessionWebSocketCloseCodeNormalClosure) {
+            self.reconnectTimer = [NSTimer scheduledTimerWithTimeInterval:5.0
+                                                                   target:self
+                                                                 selector:@selector(reconnectWebSocket:)
+                                                                 userInfo:nil
+                                                                  repeats:NO];
+        }
     }
 }
+#endif
 
 - (void)reconnectWebSocket:(NSTimer *)timer {
     self.reconnectTimer = nil;

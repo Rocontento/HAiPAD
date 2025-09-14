@@ -41,5 +41,6 @@
 - (void)stopAutoRefresh;
 - (void)connectWebSocket;
 - (void)disconnectWebSocket;
+- (BOOL)isWebSocketAvailable;
 
 @end
