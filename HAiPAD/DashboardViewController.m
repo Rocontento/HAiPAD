@@ -808,6 +808,9 @@
     UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
     if (!cell) return;
 
+    // Show grid overlay for better visual feedback
+    [self.whiteboardLayout showGridOverlayInView:self.collectionView];
+
     // Create a snapshot of the cell
     UIView *cellSnapshot = [self snapshotViewFromCell:cell];
     self.draggedCellSnapshot = cellSnapshot;
@@ -835,11 +838,16 @@
     // Move the snapshot to follow the finger
     self.draggedCellSnapshot.center = location;
 
-    // Calculate target grid position and provide visual feedback
-    CGPoint gridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
-
-    // Optional: Add highlighting for target position
-    // This could be implemented by updating empty slot views to show as highlighted
+    // Get the actual size of the card being dragged
+    CGSize cardSize = [self gridSizeForItemAtIndexPath:self.draggedIndexPath];
+    
+    // Calculate target grid position considering the card size
+    CGPoint gridPosition = [self.whiteboardLayout gridPositionFromPoint:location forCardSize:cardSize];
+    
+    // Show visual feedback for the target area
+    if ([self.whiteboardLayout respondsToSelector:@selector(highlightGridCells:size:)]) {
+        [self.whiteboardLayout highlightGridCells:gridPosition size:cardSize];
+    }
 }
 
 - (void)endDragAtLocation:(CGPoint)location {
@@ -848,21 +856,24 @@
         return;
     }
 
-    // Calculate the target grid position
-    CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
+    // Get the actual size of the card being dragged
+    CGSize cardSize = [self gridSizeForItemAtIndexPath:self.draggedIndexPath];
+
+    // Calculate the target grid position considering the card size
+    CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location forCardSize:cardSize];
 
     // Get the original cell
     UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];
 
-    // Check if the new position is valid
-    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1) excludingIndexPath:nil];
+    // Check if the new position is valid for the actual card size
+    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:cardSize excludingIndexPath:self.draggedIndexPath];
 
     if (positionIsValid) {
         // Update the entity position
         [self didMoveItemAtIndexPath:self.draggedIndexPath toGridPosition:newGridPosition];
 
-        // Animate to the new position
-        CGRect targetFrame = [self.whiteboardLayout frameForGridPosition:newGridPosition size:CGSizeMake(1, 1)];
+        // Animate to the new position using the actual card size
+        CGRect targetFrame = [self.whiteboardLayout frameForGridPosition:newGridPosition size:cardSize];
 
         [UIView animateWithDuration:0.3 animations:^{
             self.draggedCellSnapshot.center = CGPointMake(CGRectGetMidX(targetFrame), CGRectGetMidY(targetFrame));
@@ -909,6 +920,9 @@
 }
 
 - (void)cleanupDragOperation {
+    // Hide grid overlay
+    [self.whiteboardLayout hideGridOverlay];
+    
     // Show the original cell
     if (self.draggedIndexPath) {
         UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];

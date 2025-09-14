@@ -47,6 +47,7 @@
 @property (nonatomic, assign) BOOL allowsReordering;   // Enable drag-and-drop reordering
 
 - (CGPoint)gridPositionFromPoint:(CGPoint)point;
+- (CGPoint)gridPositionFromPoint:(CGPoint)point forCardSize:(CGSize)cardSize;
 - (CGRect)frameForGridPosition:(CGPoint)gridPosition size:(CGSize)gridSize;
 - (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize excludingIndexPath:(NSIndexPath *)excludingIndexPath;
 

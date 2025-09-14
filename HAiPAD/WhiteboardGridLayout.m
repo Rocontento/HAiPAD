@@ -242,6 +242,26 @@
     return CGPointMake(column, row);
 }
 
+- (CGPoint)gridPositionFromPoint:(CGPoint)point forCardSize:(CGSize)cardSize {
+    // Adjust point for grid insets
+    point.x -= self.gridInsets.left;
+    point.y -= self.gridInsets.top;
+    
+    CGFloat cellWidthWithSpacing = self.cellSize.width + self.cellSpacing;
+    CGFloat cellHeightWithSpacing = self.cellSize.height + self.cellSpacing;
+    
+    // For multi-cell cards, we want to calculate the optimal position
+    // such that the card fits completely within the grid
+    NSInteger column = (NSInteger)(point.x / cellWidthWithSpacing);
+    NSInteger row = (NSInteger)(point.y / cellHeightWithSpacing);
+    
+    // Ensure the card fits within grid bounds
+    column = MAX(0, MIN(column, self.gridColumns - (NSInteger)cardSize.width));
+    row = MAX(0, MIN(row, self.gridRows - (NSInteger)cardSize.height));
+    
+    return CGPointMake(column, row);
+}
+
 - (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize {
     return [self isGridPositionValid:gridPosition withSize:gridSize excludingIndexPath:nil];
 }
