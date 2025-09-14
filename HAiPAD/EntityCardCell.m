@@ -7,6 +7,7 @@
 //
 
 #import "EntityCardCell.h"
+#import "EntityViewFactory.h"
 
 @interface EntityCardCell ()
 @property (nonatomic, strong) UIPanGestureRecognizer *resizeGesture;
@@ -199,6 +200,10 @@
 - (void)prepareForReuse {
     [super prepareForReuse];
     
+    // Remove any existing entity view
+    [self.entityView removeFromSuperview];
+    self.entityView = nil;
+    
     // Reset to default appearance
     self.cardContainerView.backgroundColor = [UIColor whiteColor];
     self.cardContainerView.layer.borderWidth = 0.0;
@@ -214,15 +219,69 @@
 
 - (void)configureWithEntity:(NSDictionary *)entity {
     NSString *entityId = entity[@"entity_id"];
+    
+    // Remove any existing entity view
+    [self.entityView removeFromSuperview];
+    
+    // Create new entity-specific view using factory
+    self.entityView = (BaseEntityView *)[EntityViewFactory createViewForEntity:entity withFrame:self.cardContainerView.bounds];
+    self.entityView.delegate = self;
+    
+    if (self.entityView) {
+        // Add the entity view to the card container
+        self.entityView.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.cardContainerView addSubview:self.entityView];
+        
+        // Make the entity view fill the card container
+        [NSLayoutConstraint activateConstraints:@[
+            [self.entityView.topAnchor constraintEqualToAnchor:self.cardContainerView.topAnchor],
+            [self.entityView.leadingAnchor constraintEqualToAnchor:self.cardContainerView.leadingAnchor],
+            [self.entityView.trailingAnchor constraintEqualToAnchor:self.cardContainerView.trailingAnchor],
+            [self.entityView.bottomAnchor constraintEqualToAnchor:self.cardContainerView.bottomAnchor]
+        ]];
+        
+        // Hide the original labels since the entity view will handle display
+        self.nameLabel.hidden = YES;
+        self.stateLabel.hidden = YES;
+        
+        // Make sure resize handle stays on top
+        [self.cardContainerView bringSubviewToFront:self.resizeHandle];
+        [self.cardContainerView bringSubviewToFront:self.infoButton];
+    } else {
+        // Fallback to old system if factory fails
+        [self configureWithEntityLegacy:entity];
+    }
+    
+    // Update grid size based on entity type if it's still default
+    if (CGSizeEqualToSize(self.gridSize, CGSizeMake(1, 1))) {
+        self.gridSize = [EntityViewFactory defaultGridSizeForEntity:entity];
+    }
+}
+
+- (void)configureWithEntityLegacy:(NSDictionary *)entity {
+    // Legacy configuration method as fallback
+    NSString *entityId = entity[@"entity_id"];
     NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
     NSString *state = entity[@"state"];
     
     self.nameLabel.text = friendlyName;
     self.stateLabel.text = [self formatStateForEntity:entity];
+    self.nameLabel.hidden = NO;
+    self.stateLabel.hidden = NO;
     
     // Set card color based on entity type and state
     [self updateCardAppearanceForEntity:entity];
 }
+
+#pragma mark - BaseEntityViewDelegate
+
+- (void)entityView:(BaseEntityView *)view didRequestServiceCall:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId parameters:(NSDictionary *)parameters {
+    if ([self.delegate respondsToSelector:@selector(entityCardCell:didRequestServiceCall:service:entityId:parameters:)]) {
+        [self.delegate entityCardCell:self didRequestServiceCall:domain service:service entityId:entityId parameters:parameters];
+    }
+}
+
+#pragma mark - Legacy Methods (kept for compatibility)
 
 - (NSString *)formatStateForEntity:(NSDictionary *)entity {
     NSString *entityId = entity[@"entity_id"];

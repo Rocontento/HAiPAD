@@ -1240,6 +1240,28 @@
     [self.collectionView layoutIfNeeded];
 }
 
+- (void)entityCardCell:(EntityCardCell *)cell didRequestServiceCall:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId parameters:(NSDictionary *)parameters {
+    // Handle service calls from entity views
+    if (parameters) {
+        // Call service with parameters (e.g., set temperature, brightness)
+        if ([domain isEqualToString:@"climate"] && [service isEqualToString:@"set_temperature"]) {
+            NSNumber *temperature = parameters[@"temperature"];
+            if (temperature) {
+                [self.homeAssistantClient callClimateService:service entityId:entityId temperature:temperature.floatValue];
+            }
+        } else if ([domain isEqualToString:@"light"] && [service isEqualToString:@"turn_on"]) {
+            // Handle light with brightness or other parameters
+            [self.homeAssistantClient callLightService:service entityId:entityId parameters:parameters];
+        } else {
+            // Generic service call with parameters
+            [self.homeAssistantClient callService:domain service:service entityId:entityId parameters:parameters];
+        }
+    } else {
+        // Simple service call without parameters
+        [self.homeAssistantClient callService:domain service:service entityId:entityId];
+    }
+}
+
 - (void)entityCardCell:(EntityCardCell *)cell didBeginResizing:(UIGestureRecognizer *)gesture {
     // Enter editing mode if not already
     if (!self.editingMode) {
