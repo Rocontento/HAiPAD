@@ -41,7 +41,6 @@
 @property (nonatomic, strong) UIColor *navbarColor;
 @property (nonatomic, strong) UIImage *backgroundImage;
 @property (nonatomic, assign) NSInteger backgroundType; // 0 = color, 1 = image
-@property (nonatomic, assign) BOOL backgroundImageApplied; // Flag to prevent excessive reapplication
 @end
 
 @implementation DashboardViewController
@@ -61,9 +60,6 @@
 
     // Initialize drag and drop state
     self.hasPendingReload = NO;
-    
-    // Initialize background image state
-    self.backgroundImageApplied = NO;
 
     // Initialize navigation bar state - hidden by default
     self.navigationBarHidden = YES;
@@ -137,8 +133,6 @@
     
     // Reload and apply customization settings in case they changed
     [self loadCustomizationSettings];
-    // Reset background image flag when reloading settings to ensure proper reapplication
-    self.backgroundImageApplied = NO;
     [self applyCustomizationSettings];
 
     if (self.homeAssistantClient.isConnected) {
@@ -153,9 +147,8 @@
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     
-    // Only reapply background image if it hasn't been applied yet or if the view size changed significantly
-    if (self.backgroundType == 1 && self.backgroundImage && !self.backgroundImageApplied) {
-        NSLog(@"Dashboard: Reapplying background image after layout - view bounds: %@", NSStringFromCGRect(self.view.bounds));
+    // Reapply background image after layout to ensure proper scaling
+    if (self.backgroundType == 1 && self.backgroundImage) {
         [self applyBackgroundImage];
     }
 }
@@ -280,9 +273,6 @@
         if (statusBarOverlay) {
             [statusBarOverlay removeFromSuperview];
         }
-        
-        // Reset background image applied flag since we're not using an image
-        self.backgroundImageApplied = NO;
     }
     
     // Apply navbar color
@@ -294,19 +284,10 @@
 - (void)applyBackgroundImage {
     if (!self.backgroundImage) {
         NSLog(@"Dashboard: No background image to apply");
-        self.backgroundImageApplied = NO;
         return;
     }
     
-    // Validate the image before processing
-    if (![self isValidImageForBackground:self.backgroundImage]) {
-        NSLog(@"Dashboard: Invalid background image detected");
-        self.backgroundImageApplied = NO;
-        return;
-    }
-    
-    NSLog(@"Dashboard: Applying background image with size: %@ in view bounds: %@", 
-          NSStringFromCGSize(self.backgroundImage.size), NSStringFromCGRect(self.view.bounds));
+    NSLog(@"Dashboard: Applying background image with size: %@", NSStringFromCGSize(self.backgroundImage.size));
     
     // Remove any existing background image views to avoid duplicates
     UIView *existingBackgroundView = [self.view viewWithTag:999];
@@ -328,56 +309,37 @@
     
     NSLog(@"Dashboard: Loaded positioning - scale: %f, offset: (%f, %f)", savedScale, savedOffsetX, savedOffsetY);
     
-    // Create background image view with proper settings for iOS-like behavior
+    // Create background image view
     UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill; // Always fill screen like iOS wallpapers
-    backgroundImageView.clipsToBounds = YES; // Ensure proper clipping
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
+    backgroundImageView.clipsToBounds = YES;
     backgroundImageView.tag = 999;
     
     // Insert background image view behind all other views
     [self.view insertSubview:backgroundImageView atIndex:0];
     
-    // Get current view size and image size
+    // Get current view size
     CGSize viewSize = self.view.bounds.size;
     CGSize imageSize = self.backgroundImage.size;
-    
-    // Validate view and image sizes
-    if (viewSize.width <= 0 || viewSize.height <= 0 || imageSize.width <= 0 || imageSize.height <= 0) {
-        NSLog(@"Dashboard: Invalid sizes - view: %@, image: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
-        // Set frame to fill view as fallback, but use a safe fallback color
-        if (viewSize.width > 0 && viewSize.height > 0) {
-            backgroundImageView.frame = self.view.bounds;
-        } else {
-            // View size is invalid - remove the image view and use fallback color
-            [backgroundImageView removeFromSuperview];
-            self.view.backgroundColor = self.dashboardBackgroundColor ?: [UIColor whiteColor];
-            if (self.collectionView) {
-                self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-            }
-            self.backgroundImageApplied = NO;
-            NSLog(@"Dashboard: View bounds invalid, using color fallback");
-            return;
-        }
-    }
     
     NSLog(@"Dashboard: View size: %@, Image size: %@", NSStringFromCGSize(viewSize), NSStringFromCGSize(imageSize));
     
     if (savedScale > 0) {
-        // Use saved positioning from preview controller
+        // Use saved positioning from preview
         
-        // Calculate the scale that would make the image fill the screen (like iOS wallpapers)
+        // Calculate base scale that fills the screen completely (like iOS wallpapers)
         CGFloat scaleX = viewSize.width / imageSize.width;
         CGFloat scaleY = viewSize.height / imageSize.height;
-        CGFloat fillScale = MAX(scaleX, scaleY); // Always use MAX to ensure full coverage
+        CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to ensure complete coverage
         
-        // Apply user's scale adjustment to the fill scale
+        // Apply user's scale adjustment
         CGFloat finalScale = fillScale * savedScale;
         CGSize scaledSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
         
         // Calculate center position
         CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
         
-        // Apply saved offset (scale offset by final scale for consistency)
+        // Apply saved offset
         center.x += savedOffsetX * finalScale;
         center.y += savedOffsetY * finalScale;
         
@@ -389,58 +351,35 @@
             scaledSize.height
         );
         
-        NSLog(@"Dashboard: Applied saved positioning - scale: %.3f, final frame: %@", finalScale, NSStringFromCGRect(backgroundImageView.frame));
+        NSLog(@"Dashboard: Applied saved positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
         
     } else {
-        // No saved positioning - implement iOS-like default behavior
+        // No saved positioning, use default: fill entire screen like iOS wallpapers
         
-        // Calculate scale to fill the entire view (like ScaleAspectFill)
+        // Calculate scale to fill the entire view (may crop parts of image)
         CGFloat scaleX = viewSize.width / imageSize.width;
         CGFloat scaleY = viewSize.height / imageSize.height;
-        CGFloat fillScale = MAX(scaleX, scaleY); // Always use MAX to ensure complete coverage
+        CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to fill entire screen
         
-        // Calculate scaled size
         CGSize scaledSize = CGSizeMake(imageSize.width * fillScale, imageSize.height * fillScale);
         
-        // Center the image perfectly (this is key for iOS-like behavior)
+        // Center the image
         CGPoint center = CGPointMake(viewSize.width / 2.0, viewSize.height / 2.0);
         
-        // Calculate frame with perfect centering
-        CGRect imageFrame = CGRectMake(
+        backgroundImageView.frame = CGRectMake(
             center.x - scaledSize.width / 2.0,
             center.y - scaledSize.height / 2.0,
             scaledSize.width,
             scaledSize.height
         );
         
-        backgroundImageView.frame = imageFrame;
-        
-        NSLog(@"Dashboard: Applied iOS-like default positioning - scale: %.3f, frame: %@", fillScale, NSStringFromCGRect(imageFrame));
-        
-        // Log aspect ratios for debugging
-        CGFloat viewAspectRatio = viewSize.width / viewSize.height;
-        CGFloat imageAspectRatio = imageSize.width / imageSize.height;
-        NSLog(@"Dashboard: Aspect ratios - view: %.3f, image: %.3f", viewAspectRatio, imageAspectRatio);
+        NSLog(@"Dashboard: Applied default positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
     }
     
-    // Only set transparent backgrounds AFTER we've successfully positioned the image
-    // This prevents the black background issue
-    if (backgroundImageView && !CGRectIsEmpty(backgroundImageView.frame)) {
-        // Only make backgrounds transparent if the image view is properly positioned
-        self.view.backgroundColor = [UIColor clearColor];
-        if (self.collectionView) {
-            self.collectionView.backgroundColor = [UIColor clearColor];
-        }
-        NSLog(@"Dashboard: Set transparent backgrounds - image view frame: %@", NSStringFromCGRect(backgroundImageView.frame));
-        self.backgroundImageApplied = YES; // Mark as successfully applied
-    } else {
-        // Fallback to prevent black screen - use a fallback color
-        NSLog(@"Dashboard: Warning - background image view not properly positioned, using fallback");
-        self.view.backgroundColor = self.dashboardBackgroundColor ?: [UIColor whiteColor];
-        if (self.collectionView) {
-            self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-        }
-        self.backgroundImageApplied = NO; // Mark as not applied
+    // Ensure main content has transparent background to show image
+    self.view.backgroundColor = [UIColor clearColor];
+    if (self.collectionView) {
+        self.collectionView.backgroundColor = [UIColor clearColor];
     }
     
     // Update status bar appearance for better visibility
@@ -448,27 +387,6 @@
 }
 
 #pragma mark - Helper Methods for Background Image
-
-- (BOOL)isValidImageForBackground:(UIImage *)image {
-    if (!image) return NO;
-    
-    CGSize imageSize = image.size;
-    
-    // Check for valid dimensions
-    if (imageSize.width <= 0 || imageSize.height <= 0) return NO;
-    
-    // Check for reasonable dimensions (not too extreme)
-    if (imageSize.width > 10000 || imageSize.height > 10000) return NO;
-    
-    // Check for extreme aspect ratios that might cause issues
-    CGFloat aspectRatio = imageSize.width / imageSize.height;
-    if (aspectRatio > 10.0 || aspectRatio < 0.1) {
-        NSLog(@"Dashboard: Warning - extreme aspect ratio detected: %.3f", aspectRatio);
-        // Still allow it, but log the warning
-    }
-    
-    return YES;
-}
 
 - (void)updateStatusBarAppearance {
     // Only proceed if we have a background image
@@ -614,11 +532,6 @@
 - (IBAction)toggleNavigationBarTapped:(id)sender {
     self.navigationBarHidden = !self.navigationBarHidden;
     
-    // Reset background image flag to ensure it gets reapplied after layout changes
-    if (self.backgroundType == 1 && self.backgroundImage) {
-        self.backgroundImageApplied = NO;
-    }
-    
     [UIView animateWithDuration:0.3 animations:^{
         if (self.navigationBarHidden) {
             // Hide navigation bar by setting its height to 0
@@ -653,7 +566,7 @@
         }
         
         // Reapply background image after layout changes if needed
-        if (self.backgroundType == 1 && self.backgroundImage && !self.backgroundImageApplied) {
+        if (self.backgroundType == 1 && self.backgroundImage) {
             [self applyBackgroundImage];
         }
     }];
