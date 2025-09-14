@@ -11,6 +11,7 @@
 @interface WhiteboardGridLayout ()
 @property (nonatomic, strong) NSMutableDictionary *layoutAttributes;
 @property (nonatomic, strong) NSMutableSet *occupiedPositions;
+@property (nonatomic, strong) NSMutableDictionary *gridSizes; // indexPath -> gridSize
 @property (nonatomic, assign) CGSize contentSize;
 @property (nonatomic, assign) CGSize cellSize;
 @end
@@ -43,6 +44,7 @@
     
     self.layoutAttributes = [NSMutableDictionary dictionary];
     self.occupiedPositions = [NSMutableSet set];
+    self.gridSizes = [NSMutableDictionary dictionary];
 }
 
 #pragma mark - UICollectionViewLayout Override Methods
@@ -227,6 +229,10 @@
 }
 
 - (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize {
+    return [self isGridPositionValid:gridPosition withSize:gridSize excludingIndexPath:nil];
+}
+
+- (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize excludingIndexPath:(NSIndexPath *)excludingIndexPath {
     // Check bounds
     if (gridPosition.x < 0 || gridPosition.y < 0) return NO;
     if (gridPosition.x + gridSize.width > self.gridColumns) return NO;
@@ -237,12 +243,58 @@
         for (NSInteger col = gridPosition.x; col < gridPosition.x + gridSize.width; col++) {
             NSString *positionKey = [NSString stringWithFormat:@"%ld-%ld", (long)col, (long)row];
             if ([self.occupiedPositions containsObject:positionKey]) {
-                return NO;
+                // If excluding an index path, check if this position belongs to that item
+                if (excludingIndexPath) {
+                    BOOL belongsToExcluded = [self doesPosition:CGPointMake(col, row) belongToIndexPath:excludingIndexPath];
+                    if (!belongsToExcluded) {
+                        return NO;
+                    }
+                } else {
+                    return NO;
+                }
             }
         }
     }
     
     return YES;
+}
+
+- (BOOL)doesPosition:(CGPoint)position belongToIndexPath:(NSIndexPath *)indexPath {
+    // Get the grid position and size for the index path
+    CGPoint gridPosition = CGPointMake(0, 0);
+    CGSize gridSize = CGSizeMake(1, 1);
+    
+    if ([self.delegate respondsToSelector:@selector(gridPositionForItemAtIndexPath:)]) {
+        gridPosition = [self.delegate gridPositionForItemAtIndexPath:indexPath];
+    }
+    
+    if ([self.delegate respondsToSelector:@selector(gridSizeForItemAtIndexPath:)]) {
+        gridSize = [self.delegate gridSizeForItemAtIndexPath:indexPath];
+    }
+    
+    // Check if position falls within the item's grid area
+    return (position.x >= gridPosition.x && position.x < gridPosition.x + gridSize.width &&
+            position.y >= gridPosition.y && position.y < gridPosition.y + gridSize.height);
+}
+
+- (void)setGridSize:(CGSize)gridSize forIndexPath:(NSIndexPath *)indexPath {
+    NSString *key = [NSString stringWithFormat:@"%ld-%ld", (long)indexPath.section, (long)indexPath.item];
+    self.gridSizes[key] = [NSValue valueWithCGSize:gridSize];
+}
+
+- (CGSize)gridSizeForIndexPath:(NSIndexPath *)indexPath {
+    NSString *key = [NSString stringWithFormat:@"%ld-%ld", (long)indexPath.section, (long)indexPath.item];
+    NSValue *sizeValue = self.gridSizes[key];
+    if (sizeValue) {
+        return [sizeValue CGSizeValue];
+    }
+    
+    // Ask delegate or return default
+    if ([self.delegate respondsToSelector:@selector(gridSizeForItemAtIndexPath:)]) {
+        return [self.delegate gridSizeForItemAtIndexPath:indexPath];
+    }
+    
+    return CGSizeMake(1, 1); // Default size
 }
 
 - (void)markPositionsAsOccupied:(CGPoint)gridPosition withSize:(CGSize)gridSize {

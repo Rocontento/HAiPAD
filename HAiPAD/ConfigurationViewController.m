@@ -53,6 +53,14 @@
     self.statusLabel.text = @"Enter your Home Assistant URL and access token";
     self.statusLabel.textColor = [UIColor grayColor];
     self.statusLabel.numberOfLines = 0;
+    
+    // Configure grid size slider
+    if (self.gridSizeSlider) {
+        self.gridSizeSlider.minimumValue = 1.0;
+        self.gridSizeSlider.maximumValue = 8.0;
+        self.gridSizeSlider.continuous = YES;
+        [self.gridSizeSlider addTarget:self action:@selector(gridSizeSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    }
 }
 
 - (void)loadConfiguration {
@@ -76,6 +84,21 @@
     
     // Set segmented control to correct index (1-4 columns maps to indices 0-3)
     self.columnsSegmentedControl.selectedSegmentIndex = columnCount - 1;
+    
+    // Load grid size preference
+    if (self.gridSizeSlider && self.gridSizeLabel) {
+        NSInteger gridSize = [defaults integerForKey:@"ha_grid_size"];
+        if (gridSize == 0) {
+            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                gridSize = 6; // Default 6x6 for iPad
+            } else {
+                gridSize = 4; // Default 4x4 for iPhone
+            }
+        }
+        
+        self.gridSizeSlider.value = gridSize;
+        [self updateGridSizeLabel];
+    }
 }
 
 #pragma mark - IBActions
@@ -113,6 +136,12 @@
     // Save column preference (segmented control index 0-3 maps to 1-4 columns)
     NSInteger columnCount = self.columnsSegmentedControl.selectedSegmentIndex + 1;
     [defaults setInteger:columnCount forKey:@"ha_column_count"];
+    
+    // Save grid size preference
+    if (self.gridSizeSlider) {
+        NSInteger gridSize = (NSInteger)self.gridSizeSlider.value;
+        [defaults setInteger:gridSize forKey:@"ha_grid_size"];
+    }
     
     // Set default refresh intervals if not already configured
     if (![defaults objectForKey:@"ha_auto_refresh_interval"]) {
@@ -241,6 +270,17 @@
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [self.view endEditing:YES];
+}
+
+- (IBAction)gridSizeSliderChanged:(id)sender {
+    [self updateGridSizeLabel];
+}
+
+- (void)updateGridSizeLabel {
+    if (self.gridSizeSlider && self.gridSizeLabel) {
+        NSInteger gridSize = (NSInteger)self.gridSizeSlider.value;
+        self.gridSizeLabel.text = [NSString stringWithFormat:@"Grid Size: %ldx%ld", (long)gridSize, (long)gridSize];
+    }
 }
 
 @end
