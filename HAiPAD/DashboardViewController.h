@@ -30,5 +30,6 @@
 // Customization methods
 - (void)loadCustomizationSettings;
 - (void)applyCustomizationSettings;
+- (void)applyBackgroundImage;
 
 @end

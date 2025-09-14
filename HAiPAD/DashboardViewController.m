@@ -253,23 +253,7 @@
 - (void)applyCustomizationSettings {
     // Apply background based on type
     if (self.backgroundType == 1 && self.backgroundImage) {
-        // Apply background image
-        UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
-        backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
-        backgroundImageView.clipsToBounds = YES;
-        self.view.backgroundColor = [UIColor clearColor];
-        
-        // Insert background image view behind all other views
-        [self.view insertSubview:backgroundImageView atIndex:0];
-        
-        // Set constraints to fill the view
-        backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-        [NSLayoutConstraint activateConstraints:@[
-            [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-            [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-            [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
-        ]];
+        [self applyBackgroundImage];
     } else {
         // Apply background color
         self.view.backgroundColor = self.dashboardBackgroundColor;
@@ -279,6 +263,39 @@
     if (self.navigationBarView) {
         self.navigationBarView.backgroundColor = self.navbarColor;
     }
+}
+
+- (void)applyBackgroundImage {
+    if (!self.backgroundImage) {
+        return;
+    }
+    
+    // Remove any existing background image views to avoid duplicates
+    for (UIView *subview in self.view.subviews) {
+        if ([subview isKindOfClass:[UIImageView class]] && subview.tag == 999) {
+            [subview removeFromSuperview];
+            break;
+        }
+    }
+    
+    // Apply background image
+    UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
+    backgroundImageView.clipsToBounds = YES;
+    backgroundImageView.tag = 999; // Tag to identify background image view
+    self.view.backgroundColor = [UIColor clearColor];
+    
+    // Insert background image view behind all other views
+    [self.view insertSubview:backgroundImageView atIndex:0];
+    
+    // Set constraints to fill the view
+    backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [backgroundImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
+    ]];
 }
 
 #pragma mark - Navigation Bar Styling and Toggle
