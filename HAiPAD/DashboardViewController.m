@@ -10,6 +10,7 @@
 #import "ConfigurationViewController.h"
 #import "EntitySettingsViewController.h"
 #import "EntityCardCell.h"
+#import "CustomPopupViewController.h"
 
 @interface DashboardViewController ()
 @property (nonatomic, strong) NSArray *entities;
@@ -220,13 +221,19 @@
         [self.refreshControl endRefreshing];
     }
     
-    // Show alert for errors
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Connection Error"
-                                                                   message:error.localizedDescription
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:okAction];
-    [self presentViewController:alert animated:YES completion:nil];
+    // Show custom popup for errors
+    NSDictionary *errorEntity = @{
+        @"entity_id": @"error",
+        @"state": error.localizedDescription,
+        @"attributes": @{
+            @"friendly_name": @"Connection Error"
+        }
+    };
+    
+    CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:errorEntity
+                                                                             type:CustomPopupTypeInfo
+                                                                     actionHandler:nil];
+    [popup presentFromViewController:self animated:YES];
 }
 
 #pragma mark - UICollectionViewDataSource
@@ -322,164 +329,69 @@
     NSInteger index = sender.tag;
     if (index < self.entities.count) {
         NSDictionary *entity = self.entities[index];
-        NSString *entityId = entity[@"entity_id"];
-        NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-        NSString *state = entity[@"state"];
         
-        // Show entity details
-        NSString *message = [NSString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
-        
-        NSDictionary *attributes = entity[@"attributes"];
-        if (attributes) {
-            NSMutableString *attributesString = [NSMutableString stringWithString:message];
-            [attributesString appendString:@"\n\nAttributes:"];
-            for (NSString *key in attributes) {
-                id value = attributes[key];
-                [attributesString appendFormat:@"\n%@: %@", key, value];
-            }
-            message = attributesString;
-        }
-        
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                       message:message
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-        [alert addAction:okAction];
-        [self presentViewController:alert animated:YES completion:nil];
+        CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
+                                                                                 type:CustomPopupTypeInfo
+                                                                         actionHandler:nil];
+        [popup presentFromViewController:self animated:YES];
     }
 }
 
 #pragma mark - Entity Control Methods
 
 - (void)showClimateControlForEntity:(NSDictionary *)entity {
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
-    NSNumber *currentTemp = entity[@"attributes"][@"current_temperature"];
-    NSNumber *targetTemp = entity[@"attributes"][@"temperature"];
-    NSString *unit = entity[@"attributes"][@"temperature_unit"] ?: @"°C";
-    
-    NSString *message;
-    if (currentTemp && targetTemp) {
-        message = [NSString stringWithFormat:@"Current: %.1f%@\nTarget: %.1f%@", 
-                  currentTemp.floatValue, unit, targetTemp.floatValue, unit];
-    } else if (currentTemp) {
-        message = [NSString stringWithFormat:@"Current: %.1f%@\nState: %@", 
-                  currentTemp.floatValue, unit, [state capitalizedString]];
-    } else {
-        message = [NSString stringWithFormat:@"State: %@", [state capitalizedString]];
-    }
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    // Only add temperature controls if we have a target temperature
-    if (targetTemp) {
-        UIAlertAction *increaseTempAction = [UIAlertAction actionWithTitle:@"Increase Temperature (+1°)"
-                                                                     style:UIAlertActionStyleDefault
-                                                                   handler:^(UIAlertAction *action) {
-            float newTemp = targetTemp.floatValue + 1.0;
-            [self setClimateTemperature:newTemp forEntityId:entityId];
-        }];
+    CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
+                                                                             type:CustomPopupTypeClimateControl
+                                                                     actionHandler:^(NSString *action, NSDictionary *parameters) {
+        NSString *entityId = entity[@"entity_id"];
+        NSString *state = entity[@"state"];
         
-        UIAlertAction *decreaseTempAction = [UIAlertAction actionWithTitle:@"Decrease Temperature (-1°)"
-                                                                     style:UIAlertActionStyleDefault
-                                                                   handler:^(UIAlertAction *action) {
-            float newTemp = targetTemp.floatValue - 1.0;
-            [self setClimateTemperature:newTemp forEntityId:entityId];
-        }];
-        
-        [alert addAction:increaseTempAction];
-        [alert addAction:decreaseTempAction];
-    }
-    
-    // Add on/off toggle if the device supports it
-    if (![state isEqualToString:@"unavailable"]) {
-        NSString *toggleTitle = [state isEqualToString:@"off"] ? @"Turn On" : @"Turn Off";
-        UIAlertAction *toggleAction = [UIAlertAction actionWithTitle:toggleTitle
-                                                               style:UIAlertActionStyleDefault
-                                                             handler:^(UIAlertAction *action) {
+        if ([action isEqualToString:@"increase_temp"] || [action isEqualToString:@"decrease_temp"]) {
+            NSNumber *temperature = parameters[@"temperature"];
+            if (temperature) {
+                [self setClimateTemperature:temperature.floatValue forEntityId:entityId];
+            }
+        } else if ([action isEqualToString:@"toggle"]) {
             if ([state isEqualToString:@"off"]) {
                 [self.homeAssistantClient callService:@"climate" service:@"turn_on" entityId:entityId];
             } else {
                 [self.homeAssistantClient callService:@"climate" service:@"turn_off" entityId:entityId];
             }
-        }];
-        [alert addAction:toggleAction];
-    }
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    [alert addAction:cancelAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
+        }
+    }];
+    [popup presentFromViewController:self animated:YES];
 }
 
 - (void)showCoverControlForEntity:(NSDictionary *)entity {
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:[NSString stringWithFormat:@"Current state: %@", state]
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *openAction = [UIAlertAction actionWithTitle:@"Open"
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *action) {
-        [self.homeAssistantClient callService:@"cover" service:@"open_cover" entityId:entityId];
+    CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
+                                                                             type:CustomPopupTypeCoverControl
+                                                                     actionHandler:^(NSString *action, NSDictionary *parameters) {
+        NSString *entityId = entity[@"entity_id"];
+        
+        if ([action isEqualToString:@"open"]) {
+            [self.homeAssistantClient callService:@"cover" service:@"open_cover" entityId:entityId];
+        } else if ([action isEqualToString:@"close"]) {
+            [self.homeAssistantClient callService:@"cover" service:@"close_cover" entityId:entityId];
+        } else if ([action isEqualToString:@"stop"]) {
+            [self.homeAssistantClient callService:@"cover" service:@"stop_cover" entityId:entityId];
+        }
     }];
-    
-    UIAlertAction *closeAction = [UIAlertAction actionWithTitle:@"Close"
-                                                          style:UIAlertActionStyleDefault
-                                                        handler:^(UIAlertAction *action) {
-        [self.homeAssistantClient callService:@"cover" service:@"close_cover" entityId:entityId];
-    }];
-    
-    UIAlertAction *stopAction = [UIAlertAction actionWithTitle:@"Stop"
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *action) {
-        [self.homeAssistantClient callService:@"cover" service:@"stop_cover" entityId:entityId];
-    }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:openAction];
-    [alert addAction:closeAction];
-    [alert addAction:stopAction];
-    [alert addAction:cancelAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
+    [popup presentFromViewController:self animated:YES];
 }
 
 - (void)showLockControlForEntity:(NSDictionary *)entity {
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:[NSString stringWithFormat:@"Current state: %@", state]
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *lockAction = [UIAlertAction actionWithTitle:@"Lock"
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *action) {
-        [self.homeAssistantClient callService:@"lock" service:@"lock" entityId:entityId];
+    CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
+                                                                             type:CustomPopupTypeLockControl
+                                                                     actionHandler:^(NSString *action, NSDictionary *parameters) {
+        NSString *entityId = entity[@"entity_id"];
+        
+        if ([action isEqualToString:@"lock"]) {
+            [self.homeAssistantClient callService:@"lock" service:@"lock" entityId:entityId];
+        } else if ([action isEqualToString:@"unlock"]) {
+            [self.homeAssistantClient callService:@"lock" service:@"unlock" entityId:entityId];
+        }
     }];
-    
-    UIAlertAction *unlockAction = [UIAlertAction actionWithTitle:@"Unlock"
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:^(UIAlertAction *action) {
-        [self.homeAssistantClient callService:@"lock" service:@"unlock" entityId:entityId];
-    }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    
-    [alert addAction:lockAction];
-    [alert addAction:unlockAction];
-    [alert addAction:cancelAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
+    [popup presentFromViewController:self animated:YES];
 }
 
 - (void)setClimateTemperature:(float)temperature forEntityId:(NSString *)entityId {
@@ -502,46 +414,10 @@
 }
 
 - (void)showSensorInfoForEntity:(NSDictionary *)entity {
-    NSString *entityId = entity[@"entity_id"];
-    NSString *friendlyName = entity[@"attributes"][@"friendly_name"] ?: entityId;
-    NSString *state = entity[@"state"];
-    
-    NSMutableString *message = [NSMutableString stringWithFormat:@"Current State: %@", state];
-    
-    // Add useful attributes for sensors
-    NSDictionary *attributes = entity[@"attributes"];
-    if (attributes) {
-        NSString *unit = attributes[@"unit_of_measurement"];
-        NSString *deviceClass = attributes[@"device_class"];
-        NSString *lastChanged = entity[@"last_changed"];
-        
-        if (unit) {
-            [message appendFormat:@"\nUnit: %@", unit];
-        }
-        if (deviceClass) {
-            [message appendFormat:@"\nType: %@", [deviceClass capitalizedString]];
-        }
-        if (lastChanged) {
-            // Format the timestamp
-            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-            formatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
-            NSDate *date = [formatter dateFromString:lastChanged];
-            if (date) {
-                formatter.dateStyle = NSDateFormatterMediumStyle;
-                formatter.timeStyle = NSDateFormatterShortStyle;
-                [message appendFormat:@"\nLast Updated: %@", [formatter stringFromDate:date]];
-            }
-        }
-    }
-    
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:friendlyName
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:okAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
+    CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
+                                                                             type:CustomPopupTypeSensorInfo
+                                                                     actionHandler:nil];
+    [popup presentFromViewController:self animated:YES];
 }
 
 @end

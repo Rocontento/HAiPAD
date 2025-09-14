@@ -8,6 +8,7 @@
 
 #import "ConfigurationViewController.h"
 #import "HomeAssistantClient.h"
+#import "CustomPopupViewController.h"
 
 @interface ConfigurationViewController () <HomeAssistantClientDelegate>
 @property (nonatomic, strong) HomeAssistantClient *testClient;
@@ -84,12 +85,18 @@
     NSString *token = [self.tokenTextField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     
     if (url.length == 0 || token.length == 0) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Missing Information"
-                                                                       message:@"Please enter both URL and access token"
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-        [alert addAction:okAction];
-        [self presentViewController:alert animated:YES completion:nil];
+        NSDictionary *errorEntity = @{
+            @"entity_id": @"validation_error",
+            @"state": @"Please enter both URL and access token",
+            @"attributes": @{
+                @"friendly_name": @"Missing Information"
+            }
+        };
+        
+        CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:errorEntity
+                                                                                 type:CustomPopupTypeInfo
+                                                                         actionHandler:nil];
+        [popup presentFromViewController:self animated:YES];
         return;
     }
     
@@ -127,12 +134,18 @@
     NSString *token = [self.tokenTextField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     
     if (url.length == 0 || token.length == 0) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Missing Information"
-                                                                       message:@"Please enter both URL and access token"
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-        [alert addAction:okAction];
-        [self presentViewController:alert animated:YES completion:nil];
+        NSDictionary *errorEntity = @{
+            @"entity_id": @"validation_error",
+            @"state": @"Please enter both URL and access token",
+            @"attributes": @{
+                @"friendly_name": @"Missing Information"
+            }
+        };
+        
+        CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:errorEntity
+                                                                                 type:CustomPopupTypeInfo
+                                                                         actionHandler:nil];
+        [popup presentFromViewController:self animated:YES];
         return;
     }
     
