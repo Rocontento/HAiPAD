@@ -27,4 +27,8 @@
 - (IBAction)editButtonTapped:(id)sender;
 - (IBAction)toggleNavigationBarTapped:(id)sender;
 
+// Customization methods
+- (void)loadCustomizationSettings;
+- (void)applyCustomizationSettings;
+
 @end
