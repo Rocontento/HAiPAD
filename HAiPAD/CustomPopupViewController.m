@@ -15,6 +15,10 @@
 @property (nonatomic, strong) UIScrollView *contentScrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *mainValueLabel;
+@property (nonatomic, strong) UILabel *entityIdLabel;
+@property (nonatomic, strong) UILabel *stateLabel;
+@property (nonatomic, strong) UIView *attributesContainer;
 @property (nonatomic, strong) UIView *buttonContainer;
 @property (nonatomic, strong) NSMutableArray *actionButtons;
 
@@ -78,14 +82,11 @@
     self.popupContainer.layer.cornerRadius = 16.0;
     self.popupContainer.layer.masksToBounds = NO;
     
-    // Add debug border to make popup visible
-    self.popupContainer.layer.borderWidth = 2.0;
-    self.popupContainer.layer.borderColor = [UIColor redColor].CGColor;
-    
+    // Clean design - remove debug border
     // Shadow for iOS 9.3.5 compatibility
     self.popupContainer.layer.shadowColor = [UIColor blackColor].CGColor;
     self.popupContainer.layer.shadowOffset = CGSizeMake(0, 8);
-    self.popupContainer.layer.shadowOpacity = 0.2;
+    self.popupContainer.layer.shadowOpacity = 0.15;
     self.popupContainer.layer.shadowRadius = 20.0;
     
     self.popupContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -105,32 +106,67 @@
 }
 
 - (void)setupContentBasedOnType {
-    // Content view directly in popup container (without scroll view for now)
+    // Content view directly in popup container
     self.contentView = [[UIView alloc] init];
-    self.contentView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0]; // Light gray background for debugging
+    self.contentView.backgroundColor = [UIColor whiteColor]; // Clean white background
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.popupContainer addSubview:self.contentView];
     
     // Title label
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont boldSystemFontOfSize:20]; // Use boldSystemFont for iOS 9.3.5 compatibility
+    self.titleLabel.font = [UIFont boldSystemFontOfSize:18]; // Slightly smaller for better hierarchy
     self.titleLabel.textColor = [UIColor blackColor];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.numberOfLines = 0;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.titleLabel];
     
-    // Set title based on entity with better error handling
-    NSString *friendlyName = self.entity[@"attributes"][@"friendly_name"] ?: self.entity[@"entity_id"] ?: @"Unknown Entity";
-    self.titleLabel.text = friendlyName;
+    // Main value label - the prominent display for the key value
+    self.mainValueLabel = [[UILabel alloc] init];
+    self.mainValueLabel.font = [UIFont systemFontOfSize:48]; // Large, prominent font
+    self.mainValueLabel.textColor = [UIColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0]; // Blue accent color
+    self.mainValueLabel.textAlignment = NSTextAlignmentCenter;
+    self.mainValueLabel.numberOfLines = 1;
+    self.mainValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.mainValueLabel];
     
-    // Add debugging
-    NSLog(@"Popup: Setting title to: %@", friendlyName);
-    NSLog(@"Popup: Entity data: %@", self.entity);
+    // Entity ID label
+    self.entityIdLabel = [[UILabel alloc] init];
+    self.entityIdLabel.font = [UIFont systemFontOfSize:12];
+    self.entityIdLabel.textColor = [UIColor grayColor];
+    self.entityIdLabel.textAlignment = NSTextAlignmentCenter;
+    self.entityIdLabel.numberOfLines = 1;
+    self.entityIdLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.entityIdLabel];
+    
+    // State label
+    self.stateLabel = [[UILabel alloc] init];
+    self.stateLabel.font = [UIFont systemFontOfSize:14];
+    self.stateLabel.textColor = [UIColor darkGrayColor];
+    self.stateLabel.textAlignment = NSTextAlignmentCenter;
+    self.stateLabel.numberOfLines = 1;
+    self.stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.stateLabel];
+    
+    // Attributes container for additional information
+    self.attributesContainer = [[UIView alloc] init];
+    self.attributesContainer.backgroundColor = [UIColor colorWithWhite:0.98 alpha:1.0];
+    self.attributesContainer.layer.cornerRadius = 8.0;
+    self.attributesContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentView addSubview:self.attributesContainer];
+    
+    // Set basic entity information
+    NSString *friendlyName = self.entity[@"attributes"][@"friendly_name"] ?: self.entity[@"entity_id"] ?: @"Unknown Entity";
+    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
+    NSString *state = self.entity[@"state"] ?: @"Unknown State";
+    
+    self.titleLabel.text = friendlyName;
+    self.entityIdLabel.text = [NSString stringWithFormat:@"Entity ID: %@", entityId];
+    self.stateLabel.text = [NSString stringWithFormat:@"State: %@", state];
     
     // Button container
     self.buttonContainer = [[UIView alloc] init];
-    self.buttonContainer.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0]; // Debug background for buttons
+    self.buttonContainer.backgroundColor = [UIColor whiteColor]; // Clean background
     self.buttonContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.buttonContainer];
     
@@ -157,17 +193,46 @@
 - (void)layoutPopupContent {
     // Layout content view directly in popup container
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentView.topAnchor constraintEqualToAnchor:self.popupContainer.topAnchor constant:20.0],
-        [self.contentView.leadingAnchor constraintEqualToAnchor:self.popupContainer.leadingAnchor constant:20.0],
-        [self.contentView.trailingAnchor constraintEqualToAnchor:self.popupContainer.trailingAnchor constant:-20.0],
-        [self.contentView.bottomAnchor constraintEqualToAnchor:self.popupContainer.bottomAnchor constant:-20.0]
+        [self.contentView.topAnchor constraintEqualToAnchor:self.popupContainer.topAnchor constant:24.0],
+        [self.contentView.leadingAnchor constraintEqualToAnchor:self.popupContainer.leadingAnchor constant:24.0],
+        [self.contentView.trailingAnchor constraintEqualToAnchor:self.popupContainer.trailingAnchor constant:-24.0],
+        [self.contentView.bottomAnchor constraintEqualToAnchor:self.popupContainer.bottomAnchor constant:-24.0]
     ]];
     
-    // Layout title with proper constraints
+    // Layout title
     [NSLayoutConstraint activateConstraints:@[
         [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]
+    ]];
+    
+    // Layout main value label (prominently displayed)
+    [NSLayoutConstraint activateConstraints:@[
+        [self.mainValueLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
+        [self.mainValueLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.mainValueLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]
+    ]];
+    
+    // Layout entity ID label
+    [NSLayoutConstraint activateConstraints:@[
+        [self.entityIdLabel.topAnchor constraintEqualToAnchor:self.mainValueLabel.bottomAnchor constant:12.0],
+        [self.entityIdLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.entityIdLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]
+    ]];
+    
+    // Layout state label
+    [NSLayoutConstraint activateConstraints:@[
+        [self.stateLabel.topAnchor constraintEqualToAnchor:self.entityIdLabel.bottomAnchor constant:4.0],
+        [self.stateLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.stateLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]
+    ]];
+    
+    // Layout attributes container
+    [NSLayoutConstraint activateConstraints:@[
+        [self.attributesContainer.topAnchor constraintEqualToAnchor:self.stateLabel.bottomAnchor constant:16.0],
+        [self.attributesContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.attributesContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [self.attributesContainer.bottomAnchor constraintEqualToAnchor:self.buttonContainer.topAnchor constant:-16.0]
     ]];
     
     // Layout button container
@@ -177,54 +242,167 @@
         [self.buttonContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]
     ]];
     
-    NSLog(@"Popup: Layout constraints applied (simplified)");
+    NSLog(@"Popup: Layout constraints applied (new design)");
 }
 
 #pragma mark - Content Setup Methods
 
-- (void)setupInfoContent {
-    // Create info content similar to the original alert
-    UILabel *infoLabel = [[UILabel alloc] init];
-    infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor blackColor]; // Use explicit black color for iOS 9.3.5 compatibility
-    infoLabel.backgroundColor = [UIColor colorWithWhite:0.98 alpha:1.0]; // Light background to help debugging
-    infoLabel.numberOfLines = 0;
-    infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:infoLabel];
-    
-    // Format entity information - with better error handling
-    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
-    NSString *state = self.entity[@"state"] ?: @"Unknown State";
-    NSMutableString *message = [NSMutableString stringWithFormat:@"Entity ID: %@\nState: %@", entityId, state];
-    
+// Helper method to extract the main value for prominent display
+- (NSString *)extractMainValueForEntity {
     NSDictionary *attributes = self.entity[@"attributes"];
-    if (attributes && attributes.count > 0) {
-        [message appendString:@"\n\nAttributes:"];
-        for (NSString *key in attributes) {
-            id value = attributes[key];
-            if (value) {
-                [message appendFormat:@"\n%@: %@", key, value];
-            }
-        }
-    } else {
-        [message appendString:@"\n\nNo additional attributes available."];
+    NSString *entityId = self.entity[@"entity_id"] ?: @"";
+    NSString *state = self.entity[@"state"] ?: @"Unknown";
+    
+    // Temperature sensors
+    if ([entityId containsString:@"temperature"] || 
+        [attributes[@"device_class"] isEqualToString:@"temperature"]) {
+        NSString *unit = attributes[@"unit_of_measurement"] ?: @"°C";
+        return [NSString stringWithFormat:@"%@%@", state, unit];
     }
     
-    infoLabel.text = message;
+    // Humidity sensors
+    if ([entityId containsString:@"humidity"] || 
+        [attributes[@"device_class"] isEqualToString:@"humidity"]) {
+        NSString *unit = attributes[@"unit_of_measurement"] ?: @"%";
+        return [NSString stringWithFormat:@"%@%@", state, unit];
+    }
     
-    // Add debugging - ensure the label has content
-    NSLog(@"PopupInfo: Setting up info content with text: %@", message);
-    NSLog(@"PopupInfo: Title text: '%@'", self.titleLabel.text);
-    NSLog(@"PopupInfo: InfoLabel textColor: %@", infoLabel.textColor);
-    NSLog(@"PopupInfo: InfoLabel font: %@", infoLabel.font);
+    // Battery sensors
+    if ([entityId containsString:@"battery"] || 
+        [attributes[@"device_class"] isEqualToString:@"battery"]) {
+        NSString *unit = attributes[@"unit_of_measurement"] ?: @"%";
+        return [NSString stringWithFormat:@"%@%@", state, unit];
+    }
     
-    // Layout info label - simplified constraints
+    // Light entities - show brightness if available
+    if ([entityId hasPrefix:@"light."]) {
+        NSNumber *brightness = attributes[@"brightness"];
+        if (brightness && ![state isEqualToString:@"off"]) {
+            // Convert from 0-255 to 0-100 percentage
+            int percentage = (int)((brightness.floatValue / 255.0) * 100);
+            return [NSString stringWithFormat:@"%d%%", percentage];
+        }
+        return [state capitalizedString];
+    }
+    
+    // Climate entities - show current temperature
+    if ([entityId hasPrefix:@"climate."]) {
+        NSNumber *currentTemp = attributes[@"current_temperature"];
+        NSString *unit = attributes[@"temperature_unit"] ?: @"°C";
+        if (currentTemp) {
+            return [NSString stringWithFormat:@"%.1f%@", currentTemp.floatValue, unit];
+        }
+        return [state capitalizedString];
+    }
+    
+    // Switch entities
+    if ([entityId hasPrefix:@"switch."]) {
+        return [state capitalizedString];
+    }
+    
+    // Sensor entities with numeric values
+    if ([entityId hasPrefix:@"sensor."]) {
+        NSString *unit = attributes[@"unit_of_measurement"];
+        if (unit) {
+            return [NSString stringWithFormat:@"%@%@", state, unit];
+        }
+        return state;
+    }
+    
+    // For all other entities, just show the state
+    return [state capitalizedString];
+}
+
+- (void)populateAttributesContainer {
+    // Clear any existing content
+    for (UIView *subview in self.attributesContainer.subviews) {
+        [subview removeFromSuperview];
+    }
+    
+    NSDictionary *attributes = self.entity[@"attributes"];
+    if (!attributes || attributes.count == 0) {
+        // Show "No additional attributes" message
+        UILabel *noAttributesLabel = [[UILabel alloc] init];
+        noAttributesLabel.font = [UIFont systemFontOfSize:12];
+        noAttributesLabel.textColor = [UIColor grayColor];
+        noAttributesLabel.textAlignment = NSTextAlignmentCenter;
+        noAttributesLabel.text = @"No additional attributes available";
+        noAttributesLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.attributesContainer addSubview:noAttributesLabel];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [noAttributesLabel.centerXAnchor constraintEqualToAnchor:self.attributesContainer.centerXAnchor],
+            [noAttributesLabel.centerYAnchor constraintEqualToAnchor:self.attributesContainer.centerYAnchor],
+            [noAttributesLabel.leadingAnchor constraintEqualToAnchor:self.attributesContainer.leadingAnchor constant:12.0],
+            [noAttributesLabel.trailingAnchor constraintEqualToAnchor:self.attributesContainer.trailingAnchor constant:-12.0]
+        ]];
+        
+        // Add minimum height for container
+        [self.attributesContainer.heightAnchor constraintEqualToConstant:40.0].active = YES;
+        return;
+    }
+    
+    // Create attributes title
+    UILabel *attributesTitle = [[UILabel alloc] init];
+    attributesTitle.font = [UIFont boldSystemFontOfSize:14];
+    attributesTitle.textColor = [UIColor blackColor];
+    attributesTitle.text = @"Attributes";
+    attributesTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.attributesContainer addSubview:attributesTitle];
+    
     [NSLayoutConstraint activateConstraints:@[
-        [infoLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
-        [infoLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [infoLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [infoLabel.bottomAnchor constraintEqualToAnchor:self.buttonContainer.topAnchor constant:-20.0]
+        [attributesTitle.topAnchor constraintEqualToAnchor:self.attributesContainer.topAnchor constant:12.0],
+        [attributesTitle.leadingAnchor constraintEqualToAnchor:self.attributesContainer.leadingAnchor constant:12.0],
+        [attributesTitle.trailingAnchor constraintEqualToAnchor:self.attributesContainer.trailingAnchor constant:-12.0]
     ]];
+    
+    UIView *lastView = attributesTitle;
+    
+    // Add key attributes (skip friendly_name as it's already the title)
+    NSArray *importantKeys = @[@"brightness", @"color_temp", @"unit_of_measurement", @"device_class", @"battery"];
+    
+    for (NSString *key in importantKeys) {
+        id value = attributes[key];
+        if (value && ![key isEqualToString:@"friendly_name"]) {
+            UILabel *attributeLabel = [[UILabel alloc] init];
+            attributeLabel.font = [UIFont systemFontOfSize:12];
+            attributeLabel.textColor = [UIColor darkGrayColor];
+            attributeLabel.numberOfLines = 0;
+            attributeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+            
+            NSString *displayValue = [NSString stringWithFormat:@"%@", value];
+            if ([key isEqualToString:@"brightness"] && [value isKindOfClass:[NSNumber class]]) {
+                // Convert brightness from 0-255 to 0-100%
+                int percentage = (int)((((NSNumber *)value).floatValue / 255.0) * 100);
+                displayValue = [NSString stringWithFormat:@"%d%%", percentage];
+            }
+            
+            attributeLabel.text = [NSString stringWithFormat:@"%@: %@", [key capitalizedString], displayValue];
+            [self.attributesContainer addSubview:attributeLabel];
+            
+            [NSLayoutConstraint activateConstraints:@[
+                [attributeLabel.topAnchor constraintEqualToAnchor:lastView.bottomAnchor constant:6.0],
+                [attributeLabel.leadingAnchor constraintEqualToAnchor:self.attributesContainer.leadingAnchor constant:12.0],
+                [attributeLabel.trailingAnchor constraintEqualToAnchor:self.attributesContainer.trailingAnchor constant:-12.0]
+            ]];
+            
+            lastView = attributeLabel;
+        }
+    }
+    
+    // Add bottom padding
+    [lastView.bottomAnchor constraintEqualToAnchor:self.attributesContainer.bottomAnchor constant:-12.0].active = YES;
+}
+
+- (void)setupInfoContent {
+    // Set the main value for prominent display
+    self.mainValueLabel.text = [self extractMainValueForEntity];
+    
+    // Populate the attributes container
+    [self populateAttributesContainer];
+    
+    // Add debugging
+    NSLog(@"PopupInfo: Setting up info content with main value: %@", self.mainValueLabel.text);
     
     // Add OK button
     [self addActionButton:@"OK" style:CustomPopupButtonStylePrimary action:@"dismiss"];
@@ -233,46 +411,35 @@
 }
 
 - (void)setupClimateControlContent {
-    // Similar to the original climate control but with better UI
-    NSString *state = self.entity[@"state"];
+    // Set the main value - show current temperature prominently
     NSNumber *currentTemp = self.entity[@"attributes"][@"current_temperature"];
     NSNumber *targetTemp = self.entity[@"attributes"][@"temperature"];
     NSString *unit = self.entity[@"attributes"][@"temperature_unit"] ?: @"°C";
+    NSString *state = self.entity[@"state"];
     
-    // Create temperature display
-    UILabel *tempLabel = [[UILabel alloc] init];
-    tempLabel.font = [UIFont systemFontOfSize:16];
-    tempLabel.textColor = [UIColor blackColor];
-    tempLabel.numberOfLines = 0;
-    tempLabel.textAlignment = NSTextAlignmentCenter;
-    tempLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:tempLabel];
-    
-    NSString *tempText;
-    if (currentTemp && targetTemp) {
-        tempText = [NSString stringWithFormat:@"Current: %.1f%@\nTarget: %.1f%@", 
-                   currentTemp.floatValue, unit, targetTemp.floatValue, unit];
-    } else if (currentTemp) {
-        tempText = [NSString stringWithFormat:@"Current: %.1f%@\nState: %@", 
-                   currentTemp.floatValue, unit, [state capitalizedString]];
+    if (currentTemp) {
+        self.mainValueLabel.text = [NSString stringWithFormat:@"%.1f%@", currentTemp.floatValue, unit];
+    } else if (targetTemp) {
+        self.mainValueLabel.text = [NSString stringWithFormat:@"%.1f%@", targetTemp.floatValue, unit];
     } else {
-        tempText = [NSString stringWithFormat:@"State: %@", [state capitalizedString]];
+        self.mainValueLabel.text = [state capitalizedString];
     }
     
-    tempLabel.text = tempText;
+    // Update state label to show additional info
+    if (currentTemp && targetTemp) {
+        self.stateLabel.text = [NSString stringWithFormat:@"Target: %.1f%@ | State: %@", 
+                               targetTemp.floatValue, unit, [state capitalizedString]];
+    } else {
+        self.stateLabel.text = [NSString stringWithFormat:@"State: %@", [state capitalizedString]];
+    }
     
-    // Layout temperature label
-    [NSLayoutConstraint activateConstraints:@[
-        [tempLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
-        [tempLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [tempLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [tempLabel.bottomAnchor constraintEqualToAnchor:self.buttonContainer.topAnchor constant:-20.0]
-    ]];
+    // Populate the attributes container
+    [self populateAttributesContainer];
     
     // Add temperature control buttons if we have a target temperature
     if (targetTemp) {
-        [self addActionButton:@"Increase Temperature (+1°)" style:CustomPopupButtonStyleSecondary action:@"increase_temp"];
-        [self addActionButton:@"Decrease Temperature (-1°)" style:CustomPopupButtonStyleSecondary action:@"decrease_temp"];
+        [self addActionButton:@"Increase (+1°)" style:CustomPopupButtonStyleSecondary action:@"increase_temp"];
+        [self addActionButton:@"Decrease (-1°)" style:CustomPopupButtonStyleSecondary action:@"decrease_temp"];
     }
     
     // Add on/off toggle if the device supports it
@@ -285,24 +452,12 @@
 }
 
 - (void)setupCoverControlContent {
-    // Cover control content
+    // Set the main value - show state prominently
     NSString *state = self.entity[@"state"];
+    self.mainValueLabel.text = [state capitalizedString];
     
-    UILabel *stateLabel = [[UILabel alloc] init];
-    stateLabel.font = [UIFont systemFontOfSize:16];
-    stateLabel.textColor = [UIColor blackColor];
-    stateLabel.textAlignment = NSTextAlignmentCenter;
-    stateLabel.text = [NSString stringWithFormat:@"Current state: %@", state];
-    stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:stateLabel];
-    
-    // Layout state label
-    [NSLayoutConstraint activateConstraints:@[
-        [stateLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
-        [stateLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [stateLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [stateLabel.bottomAnchor constraintEqualToAnchor:self.buttonContainer.topAnchor constant:-20.0]
-    ]];
+    // Populate the attributes container
+    [self populateAttributesContainer];
     
     // Add control buttons
     [self addActionButton:@"Open" style:CustomPopupButtonStyleSecondary action:@"open"];
@@ -312,98 +467,41 @@
 }
 
 - (void)setupLockControlContent {
-    // Lock control content
+    // Set the main value - show state prominently
     NSString *state = self.entity[@"state"];
+    self.mainValueLabel.text = [state capitalizedString];
     
-    UILabel *stateLabel = [[UILabel alloc] init];
-    stateLabel.font = [UIFont systemFontOfSize:16];
-    stateLabel.textColor = [UIColor blackColor];
-    stateLabel.textAlignment = NSTextAlignmentCenter;
-    stateLabel.text = [NSString stringWithFormat:@"Current state: %@", state];
-    stateLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentView addSubview:stateLabel];
-    
-    // Layout state label
-    [NSLayoutConstraint activateConstraints:@[
-        [stateLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
-        [stateLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [stateLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [stateLabel.bottomAnchor constraintEqualToAnchor:self.buttonContainer.topAnchor constant:-20.0]
-    ]];
+    // Populate the attributes container
+    [self populateAttributesContainer];
     
     // Add control buttons
-    [self addActionButton:@"Lock" style:CustomPopupButtonStyleSecondary action:@"lock"];
-    [self addActionButton:@"Unlock" style:CustomPopupButtonStyleSecondary action:@"unlock"];
+    NSString *lockAction = [state isEqualToString:@"locked"] ? @"Unlock" : @"Lock";
+    [self addActionButton:lockAction style:CustomPopupButtonStylePrimary action:@"toggle_lock"];
     [self addActionButton:@"Cancel" style:CustomPopupButtonStyleCancel action:@"dismiss"];
 }
 
 - (void)setupSensorInfoContent {
-    // Sensor info content - enhanced version of the original
-    NSString *entityId = self.entity[@"entity_id"] ?: @"Unknown Entity";
-    NSString *state = self.entity[@"state"] ?: @"Unknown State";
+    // Set the main value for prominent display
+    self.mainValueLabel.text = [self extractMainValueForEntity];
     
-    NSMutableString *message = [NSMutableString stringWithFormat:@"Entity ID: %@\nCurrent State: %@", entityId, state];
-    
-    // Add useful attributes for sensors
-    NSDictionary *attributes = self.entity[@"attributes"];
-    if (attributes && attributes.count > 0) {
-        NSString *unit = attributes[@"unit_of_measurement"];
-        NSString *deviceClass = attributes[@"device_class"];
-        NSString *lastChanged = self.entity[@"last_changed"];
-        
-        if (unit) {
-            [message appendFormat:@"\nUnit: %@", unit];
+    // Update state label to show last updated time if available
+    NSString *lastChanged = self.entity[@"last_changed"];
+    if (lastChanged) {
+        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        formatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
+        NSDate *date = [formatter dateFromString:lastChanged];
+        if (date) {
+            formatter.dateStyle = NSDateFormatterMediumStyle;
+            formatter.timeStyle = NSDateFormatterShortStyle;
+            self.stateLabel.text = [NSString stringWithFormat:@"Last Updated: %@", [formatter stringFromDate:date]];
         }
-        if (deviceClass) {
-            [message appendFormat:@"\nType: %@", [deviceClass capitalizedString]];
-        }
-        if (lastChanged) {
-            // Format the timestamp
-            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-            formatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'";
-            NSDate *date = [formatter dateFromString:lastChanged];
-            if (date) {
-                formatter.dateStyle = NSDateFormatterMediumStyle;
-                formatter.timeStyle = NSDateFormatterShortStyle;
-                [message appendFormat:@"\nLast Updated: %@", [formatter stringFromDate:date]];
-            }
-        }
-        
-        // Add additional useful attributes
-        [message appendString:@"\n\nOther Attributes:"];
-        for (NSString *key in attributes) {
-            // Skip already displayed attributes
-            if (![key isEqualToString:@"unit_of_measurement"] && 
-                ![key isEqualToString:@"device_class"] && 
-                ![key isEqualToString:@"friendly_name"]) {
-                id value = attributes[key];
-                if (value) {
-                    [message appendFormat:@"\n%@: %@", key, value];
-                }
-            }
-        }
-    } else {
-        [message appendString:@"\n\nNo additional attributes available."];
     }
     
-    UILabel *infoLabel = [[UILabel alloc] init];
-    infoLabel.font = [UIFont systemFontOfSize:14];
-    infoLabel.textColor = [UIColor blackColor];
-    infoLabel.numberOfLines = 0;
-    infoLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    infoLabel.text = message;
-    [self.contentView addSubview:infoLabel];
+    // Populate the attributes container
+    [self populateAttributesContainer];
     
-    // Add debugging - ensure the label has content
-    NSLog(@"PopupSensorInfo: Setting up sensor content with text: %@", message);
-    
-    // Layout info label
-    [NSLayoutConstraint activateConstraints:@[
-        [infoLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:16.0],
-        [infoLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [infoLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [infoLabel.bottomAnchor constraintEqualToAnchor:self.buttonContainer.topAnchor constant:-20.0]
-    ]];
+    // Add debugging
+    NSLog(@"PopupSensorInfo: Setting up sensor content with main value: %@", self.mainValueLabel.text);
     
     // Add OK button
     [self addActionButton:@"OK" style:CustomPopupButtonStylePrimary action:@"dismiss"];
@@ -416,23 +514,25 @@
     [button setTitle:title forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont boldSystemFontOfSize:16]; // Use boldSystemFont for iOS 9.3.5 compatibility
     
-    // Style button based on type
+    // Style button based on type with improved styling
     switch (style) {
         case CustomPopupButtonStylePrimary:
             button.backgroundColor = [UIColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];
             [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
             break;
         case CustomPopupButtonStyleSecondary:
-            button.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+            button.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
             [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+            button.layer.borderWidth = 1.0;
+            button.layer.borderColor = [UIColor colorWithWhite:0.85 alpha:1.0].CGColor;
             break;
         case CustomPopupButtonStyleCancel:
-            button.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0];
-            [button setTitleColor:[UIColor grayColor] forState:UIControlStateNormal];
+            button.backgroundColor = [UIColor colorWithWhite:0.94 alpha:1.0];
+            [button setTitleColor:[UIColor colorWithWhite:0.4 alpha:1.0] forState:UIControlStateNormal];
             break;
     }
     
-    button.layer.cornerRadius = 8.0;
+    button.layer.cornerRadius = 10.0; // Slightly more rounded
     button.translatesAutoresizingMaskIntoConstraints = NO;
     
     // Add tap handler
@@ -501,6 +601,11 @@
             float newTemp = targetTemp.floatValue - 1.0;
             parameters = @{@"temperature": @(newTemp)};
         }
+    } else if ([action isEqualToString:@"toggle_lock"]) {
+        // Handle lock/unlock toggle
+        NSString *currentState = self.entity[@"state"];
+        NSString *newAction = [currentState isEqualToString:@"locked"] ? @"unlock" : @"lock";
+        action = newAction; // Override action for the handler
     }
     
     // Call action handler
