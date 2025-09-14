@@ -51,15 +51,12 @@
 }
 
 - (void)createResizeHandle {
-    // Create resize handle view
-    self.resizeHandle = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 24, 24)];
-    self.resizeHandle.backgroundColor = [UIColor colorWithWhite:0.9 alpha:0.95];
-    self.resizeHandle.layer.cornerRadius = 12.0;
-    self.resizeHandle.layer.borderWidth = 1.5;
-    self.resizeHandle.layer.borderColor = [UIColor colorWithWhite:0.7 alpha:1.0].CGColor;
+    // Create a discrete resize handle area for touch interaction
+    self.resizeHandle = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 20, 20)];
+    self.resizeHandle.backgroundColor = [UIColor clearColor];
     self.resizeHandle.hidden = YES;
     
-    // Add curved handle lines (similar to iOS 18)
+    // Add curved handle indicator
     [self addResizeHandleIndicator];
     
     // Add to card container
@@ -70,8 +67,8 @@
     [NSLayoutConstraint activateConstraints:@[
         [self.resizeHandle.trailingAnchor constraintEqualToAnchor:self.cardContainerView.trailingAnchor constant:-4],
         [self.resizeHandle.bottomAnchor constraintEqualToAnchor:self.cardContainerView.bottomAnchor constant:-4],
-        [self.resizeHandle.widthAnchor constraintEqualToConstant:24],
-        [self.resizeHandle.heightAnchor constraintEqualToConstant:24]
+        [self.resizeHandle.widthAnchor constraintEqualToConstant:20],
+        [self.resizeHandle.heightAnchor constraintEqualToConstant:20]
     ]];
     
     // Add pan gesture for resizing
@@ -80,23 +77,21 @@
 }
 
 - (void)addResizeHandleIndicator {
-    // Create curved lines similar to iOS 18 widget resize handle
+    // Create a discrete curved line that follows the corner border like in the reference image
     UIBezierPath *path = [UIBezierPath bezierPath];
     
-    // Bottom curved line
-    [path moveToPoint:CGPointMake(6, 18)];
-    [path addQuadCurveToPoint:CGPointMake(18, 18) controlPoint:CGPointMake(12, 16)];
-    
-    // Right curved line
-    [path moveToPoint:CGPointMake(18, 6)];
-    [path addQuadCurveToPoint:CGPointMake(18, 18) controlPoint:CGPointMake(16, 12)];
+    // Create a simple curved line that follows the corner border with a smaller radius
+    // This mimics the discrete curved corner design shown in the reference image
+    [path moveToPoint:CGPointMake(8, 16)];
+    [path addQuadCurveToPoint:CGPointMake(16, 8) controlPoint:CGPointMake(16, 16)];
     
     CAShapeLayer *shapeLayer = [CAShapeLayer layer];
     shapeLayer.path = path.CGPath;
-    shapeLayer.strokeColor = [UIColor colorWithWhite:0.6 alpha:1.0].CGColor;
+    shapeLayer.strokeColor = [UIColor colorWithWhite:0.6 alpha:0.7].CGColor;
     shapeLayer.lineWidth = 1.5;
     shapeLayer.fillColor = [UIColor clearColor].CGColor;
     shapeLayer.lineCap = kCALineCapRound;
+    shapeLayer.lineJoin = kCALineJoinRound;
     
     [self.resizeHandle.layer addSublayer:shapeLayer];
 }
