@@ -51,27 +51,34 @@
 }
 
 - (void)createResizeHandle {
-    // Create resize handle view
-    self.resizeHandle = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 24, 24)];
-    self.resizeHandle.backgroundColor = [UIColor colorWithWhite:0.9 alpha:0.95];
-    self.resizeHandle.layer.cornerRadius = 12.0;
-    self.resizeHandle.layer.borderWidth = 1.5;
-    self.resizeHandle.layer.borderColor = [UIColor colorWithWhite:0.7 alpha:1.0].CGColor;
+    // Create resize handle view with improved appearance
+    self.resizeHandle = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 28, 28)];
+    self.resizeHandle.backgroundColor = [UIColor colorWithWhite:0.95 alpha:0.98];
+    self.resizeHandle.layer.cornerRadius = 14.0;
+    self.resizeHandle.layer.borderWidth = 1.0;
+    self.resizeHandle.layer.borderColor = [UIColor colorWithWhite:0.8 alpha:0.9].CGColor;
+    
+    // Add subtle shadow for depth
+    self.resizeHandle.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.resizeHandle.layer.shadowOffset = CGSizeMake(0, 1);
+    self.resizeHandle.layer.shadowOpacity = 0.15;
+    self.resizeHandle.layer.shadowRadius = 2.0;
+    
     self.resizeHandle.hidden = YES;
     
-    // Add curved handle lines (similar to iOS 18)
+    // Add curved handle lines
     [self addResizeHandleIndicator];
     
     // Add to card container
     [self.cardContainerView addSubview:self.resizeHandle];
     
-    // Position in bottom right corner
+    // Position in bottom right corner with slight padding
     self.resizeHandle.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
-        [self.resizeHandle.trailingAnchor constraintEqualToAnchor:self.cardContainerView.trailingAnchor constant:-4],
-        [self.resizeHandle.bottomAnchor constraintEqualToAnchor:self.cardContainerView.bottomAnchor constant:-4],
-        [self.resizeHandle.widthAnchor constraintEqualToConstant:24],
-        [self.resizeHandle.heightAnchor constraintEqualToConstant:24]
+        [self.resizeHandle.trailingAnchor constraintEqualToAnchor:self.cardContainerView.trailingAnchor constant:-2],
+        [self.resizeHandle.bottomAnchor constraintEqualToAnchor:self.cardContainerView.bottomAnchor constant:-2],
+        [self.resizeHandle.widthAnchor constraintEqualToConstant:28],
+        [self.resizeHandle.heightAnchor constraintEqualToConstant:28]
     ]];
     
     // Add pan gesture for resizing
@@ -80,23 +87,28 @@
 }
 
 - (void)addResizeHandleIndicator {
-    // Create curved lines similar to iOS 18 widget resize handle
+    // Create elegant curved corner handle similar to the reference image
     UIBezierPath *path = [UIBezierPath bezierPath];
     
-    // Bottom curved line
-    [path moveToPoint:CGPointMake(6, 18)];
-    [path addQuadCurveToPoint:CGPointMake(18, 18) controlPoint:CGPointMake(12, 16)];
+    // Create a smooth curved corner that starts from the center and curves outward
+    // This creates a more elegant appearance similar to the reference image
     
-    // Right curved line
-    [path moveToPoint:CGPointMake(18, 6)];
-    [path addQuadCurveToPoint:CGPointMake(18, 18) controlPoint:CGPointMake(16, 12)];
+    // Main curved line that flows from top-right to bottom-right corner
+    [path moveToPoint:CGPointMake(12, 8)];
+    [path addQuadCurveToPoint:CGPointMake(18, 12) controlPoint:CGPointMake(16, 9)];
+    [path addQuadCurveToPoint:CGPointMake(16, 18) controlPoint:CGPointMake(19, 15)];
+    
+    // Add a second complementary curve for better visual balance
+    [path moveToPoint:CGPointMake(8, 12)];
+    [path addQuadCurveToPoint:CGPointMake(12, 16) controlPoint:CGPointMake(9, 15)];
     
     CAShapeLayer *shapeLayer = [CAShapeLayer layer];
     shapeLayer.path = path.CGPath;
-    shapeLayer.strokeColor = [UIColor colorWithWhite:0.6 alpha:1.0].CGColor;
-    shapeLayer.lineWidth = 1.5;
+    shapeLayer.strokeColor = [UIColor colorWithWhite:0.5 alpha:0.8].CGColor;
+    shapeLayer.lineWidth = 2.0;
     shapeLayer.fillColor = [UIColor clearColor].CGColor;
     shapeLayer.lineCap = kCALineCapRound;
+    shapeLayer.lineJoin = kCALineJoinRound;
     
     [self.resizeHandle.layer addSublayer:shapeLayer];
 }
