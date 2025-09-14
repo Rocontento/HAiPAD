@@ -34,9 +34,7 @@
 - (void)disconnect;
 - (void)fetchStates;
 - (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId;
-- (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId parameters:(NSDictionary *)parameters;
 - (void)callClimateService:(NSString *)service entityId:(NSString *)entityId temperature:(float)temperature;
-- (void)callLightService:(NSString *)service entityId:(NSString *)entityId parameters:(NSDictionary *)parameters;
 
 // Real-time updates
 - (void)startAutoRefresh;

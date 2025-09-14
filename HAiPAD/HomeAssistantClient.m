@@ -193,10 +193,6 @@
 }
 
 - (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId {
-    [self callService:domain service:service entityId:entityId parameters:nil];
-}
-
-- (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId parameters:(NSDictionary *)parameters {
     if (!self.isConnected) {
         return;
     }
@@ -209,13 +205,7 @@
     [request setValue:[NSString stringWithFormat:@"Bearer %@", self.accessToken] forHTTPHeaderField:@"Authorization"];
     [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
     
-    NSMutableDictionary *requestBody = [NSMutableDictionary dictionaryWithObject:entityId forKey:@"entity_id"];
-    
-    // Add any additional parameters
-    if (parameters) {
-        [requestBody addEntriesFromDictionary:parameters];
-    }
-    
+    NSDictionary *requestBody = @{@"entity_id": entityId};
     NSError *jsonError;
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:requestBody options:0 error:&jsonError];
     
@@ -238,10 +228,6 @@
         
         [task resume];
     }
-}
-
-- (void)callLightService:(NSString *)service entityId:(NSString *)entityId parameters:(NSDictionary *)parameters {
-    [self callService:@"light" service:service entityId:entityId parameters:parameters];
 }
 
 - (void)callClimateService:(NSString *)service entityId:(NSString *)entityId temperature:(float)temperature {
