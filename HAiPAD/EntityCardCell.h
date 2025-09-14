@@ -8,6 +8,17 @@
 
 #import <UIKit/UIKit.h>
 
+// Forward declaration
+@class EntityCardCell;
+
+// Protocol declaration must come before interface that uses it
+@protocol EntityCardCellResizeDelegate <NSObject>
+@optional
+- (void)entityCardCell:(EntityCardCell *)cell didBeginResizeWithGesture:(UIPanGestureRecognizer *)gesture;
+- (void)entityCardCell:(EntityCardCell *)cell didChangeResizeWithGesture:(UIPanGestureRecognizer *)gesture;
+- (void)entityCardCell:(EntityCardCell *)cell didEndResizeWithGesture:(UIPanGestureRecognizer *)gesture;
+@end
+
 @interface EntityCardCell : UICollectionViewCell
 
 @property (weak, nonatomic) IBOutlet UILabel *nameLabel;
@@ -31,14 +42,5 @@
 
 - (void)configureWithEntity:(NSDictionary *)entity;
 - (void)setEditModeEnabled:(BOOL)enabled animated:(BOOL)animated;
-
-@end
-
-@protocol EntityCardCellResizeDelegate <NSObject>
-@optional
-- (void)entityCardCell:(EntityCardCell *)cell didBeginResizeWithGesture:(UIPanGestureRecognizer *)gesture;
-- (void)entityCardCell:(EntityCardCell *)cell didChangeResizeWithGesture:(UIPanGestureRecognizer *)gesture;
-- (void)entityCardCell:(EntityCardCell *)cell didEndResizeWithGesture:(UIPanGestureRecognizer *)gesture;
-@end
 
 @end
