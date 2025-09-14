@@ -64,4 +64,4 @@ ExportOptions.plist
 
 # CI/CD temporary files
 /export/
-/build/
+/build/preview_app_icon.png
