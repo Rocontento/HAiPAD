@@ -24,13 +24,18 @@
 @property (nonatomic, strong) WhiteboardGridLayout *whiteboardLayout;
 @property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
+// Drag and drop properties
+@property (nonatomic, assign) BOOL editingMode;
+@property (nonatomic, strong) NSIndexPath *draggedIndexPath;
+@property (nonatomic, strong) UIView *draggedCellSnapshot;
+@property (nonatomic, assign) CGPoint draggedCellCenter;
 @end
 
 @implementation DashboardViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
+
     self.title = @"Home Assistant";
     self.entities = @[];
     self.allEntities = @[];
@@ -38,39 +43,39 @@
     self.entityPositions = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
-    
+
     // Set up whiteboard grid layout
     [self setupWhiteboardLayout];
-    
+
     // Set up collection view
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
     self.collectionView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-    
+
     // Register empty slot supplementary view
-    [self.collectionView registerClass:[EmptyGridSlotView class] 
-            forSupplementaryViewOfKind:@"EmptySlot" 
+    [self.collectionView registerClass:[EmptyGridSlotView class]
+            forSupplementaryViewOfKind:@"EmptySlot"
                    withReuseIdentifier:@"EmptyGridSlotView"];
-    
+
     // Add long press gesture for dragging cards
     self.longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
     self.longPressGesture.minimumPressDuration = 0.5;
     [self.collectionView addGestureRecognizer:self.longPressGesture];
-    
+
     // Register cell from storyboard
     // The cell will be registered automatically since it's defined in the storyboard
-    
+
     // Load saved configuration
     [self loadConfiguration];
-    
+
     // Load entity settings and positions
     [self loadEntitySettings];
     [self loadEntityPositions];
-    
+
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refreshButtonTapped:) forControlEvents:UIControlEventValueChanged];
-    
+
     // Add refresh control to collection view
     [self.collectionView addSubview:self.refreshControl];
     [self.collectionView sendSubviewToBack:self.refreshControl];
@@ -78,16 +83,16 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    
+
     // Reload entity settings in case they changed
     [self loadEntitySettings];
-    
+
     // Reload configuration in case column count changed
     [self loadConfiguration];
-    
+
     // Reload layout to apply any column changes
     [self.collectionView.collectionViewLayout invalidateLayout];
-    
+
     if (self.homeAssistantClient.isConnected) {
         [self.homeAssistantClient fetchStates];
     }
@@ -97,16 +102,16 @@
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSString *baseURL = [defaults stringForKey:@"ha_base_url"];
     NSString *accessToken = [defaults stringForKey:@"ha_access_token"];
-    
+
     // Load column count preference (now used for grid columns)
     self.columnCount = [defaults integerForKey:@"ha_column_count"];
     if (self.columnCount == 0) {
         self.columnCount = 4; // Default to 4 columns for whiteboard
     }
-    
+
     // Update grid layout
     self.whiteboardLayout.gridColumns = self.columnCount;
-    
+
     if (baseURL && accessToken) {
         [self.homeAssistantClient connectWithBaseURL:baseURL accessToken:accessToken];
         self.statusLabel.text = @"Connecting...";
@@ -120,14 +125,14 @@
 - (void)loadEntitySettings {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSArray *savedEntityIds = [defaults arrayForKey:@"ha_enabled_entities"];
-    
+
     if (savedEntityIds) {
         self.enabledEntityIds = [NSSet setWithArray:savedEntityIds];
     } else {
         // If no settings saved, enable all entities by default
         self.enabledEntityIds = [NSSet set];
     }
-    
+
     // Filter entities based on settings if we have entities loaded
     if (self.allEntities.count > 0) {
         [self filterEntitiesBasedOnSettings];
@@ -139,7 +144,7 @@
 - (IBAction)configButtonTapped:(id)sender {
     UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
     ConfigurationViewController *configVC = [storyboard instantiateViewControllerWithIdentifier:@"ConfigurationViewController"];
-    
+
     UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:configVC];
     [self presentViewController:navController animated:YES completion:nil];
 }
@@ -150,7 +155,7 @@
     } else {
         [self loadConfiguration];
     }
-    
+
     // Stop refresh control if it's active
     if (self.refreshControl.isRefreshing) {
         [self.refreshControl endRefreshing];
@@ -160,7 +165,7 @@
 - (IBAction)entitiesButtonTapped:(id)sender {
     UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
     EntitySettingsViewController *entitiesVC = [storyboard instantiateViewControllerWithIdentifier:@"EntitySettingsViewController"];
-    
+
     UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:entitiesVC];
     [self presentViewController:navController animated:YES completion:nil];
 }
@@ -180,7 +185,7 @@
         }
         self.entities = filteredEntities;
     }
-    
+
     [self.collectionView reloadData];
 }
 
@@ -201,7 +206,7 @@
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStates:(NSArray *)states {
     // Filter for common entity types that are useful in a dashboard
     NSMutableArray *filteredEntities = [NSMutableArray array];
-    
+
     for (NSDictionary *entity in states) {
         NSString *entityId = entity[@"entity_id"];
         if (entityId) {
@@ -218,17 +223,17 @@
             }
         }
     }
-    
+
     // Sort entities by friendly name
     self.allEntities = [filteredEntities sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *obj1, NSDictionary *obj2) {
         NSString *name1 = obj1[@"attributes"][@"friendly_name"] ?: obj1[@"entity_id"];
         NSString *name2 = obj2[@"attributes"][@"friendly_name"] ?: obj2[@"entity_id"];
         return [name1 compare:name2];
     }];
-    
+
     // Apply entity filtering based on user settings
     [self filterEntitiesBasedOnSettings];
-    
+
     // Stop refresh control if it's active
     if (self.refreshControl.isRefreshing) {
         [self.refreshControl endRefreshing];
@@ -238,12 +243,12 @@
 - (void)homeAssistantClient:(HomeAssistantClient *)client didFailWithError:(NSError *)error {
     self.statusLabel.text = [NSString stringWithFormat:@"Error: %@", error.localizedDescription];
     self.statusLabel.textColor = [UIColor redColor];
-    
+
     // Stop refresh control if it's active
     if (self.refreshControl.isRefreshing) {
         [self.refreshControl endRefreshing];
     }
-    
+
     // Show custom popup for errors
     NSDictionary *errorEntity = @{
         @"entity_id": @"error",
@@ -252,7 +257,7 @@
             @"friendly_name": @"Connection Error"
         }
     };
-    
+
     CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:errorEntity
                                                                              type:CustomPopupTypeInfo
                                                                      actionHandler:nil];
@@ -267,14 +272,14 @@
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     EntityCardCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"EntityCardCell" forIndexPath:indexPath];
-    
+
     NSDictionary *entity = self.entities[indexPath.item];
     [cell configureWithEntity:entity];
-    
+
     // Add target for info button
     [cell.infoButton addTarget:self action:@selector(infoButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     cell.infoButton.tag = indexPath.item;
-    
+
     return cell;
 }
 
@@ -282,12 +287,12 @@
 
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath {
     if ([kind isEqualToString:@"EmptySlot"]) {
-        EmptyGridSlotView *emptySlotView = [collectionView dequeueReusableSupplementaryViewOfKind:kind 
-                                                                                withReuseIdentifier:@"EmptyGridSlotView" 
+        EmptyGridSlotView *emptySlotView = [collectionView dequeueReusableSupplementaryViewOfKind:kind
+                                                                                withReuseIdentifier:@"EmptyGridSlotView"
                                                                                        forIndexPath:indexPath];
         return emptySlotView;
     }
-    
+
     return nil;
 }
 
@@ -295,15 +300,15 @@
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     [collectionView deselectItemAtIndexPath:indexPath animated:YES];
-    
+
     // Add visual feedback for the tap
     EntityCardCell *cell = (EntityCardCell *)[collectionView cellForItemAtIndexPath:indexPath];
     [self animateCardTap:cell];
-    
+
     NSDictionary *entity = self.entities[indexPath.item];
     NSString *entityId = entity[@"entity_id"];
     NSString *state = entity[@"state"];
-    
+
     // Handle tappable entities
     if ([entityId hasPrefix:@"light."]) {
         if ([state isEqualToString:@"on"]) {
@@ -340,7 +345,7 @@
 - (void)setupWhiteboardLayout {
     self.whiteboardLayout = [[WhiteboardGridLayout alloc] init];
     self.whiteboardLayout.delegate = self;
-    
+
     // Configure grid based on device
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         self.whiteboardLayout.gridColumns = 4;
@@ -349,12 +354,15 @@
         self.whiteboardLayout.gridColumns = 2;
         self.whiteboardLayout.gridRows = 8;
     }
-    
+
     self.whiteboardLayout.cellSpacing = 12.0;
     self.whiteboardLayout.gridInsets = UIEdgeInsetsMake(16, 16, 16, 16);
-    self.whiteboardLayout.showEmptySlots = YES;
+    self.whiteboardLayout.showEmptySlots = NO; // Only show during editing
     self.whiteboardLayout.allowsReordering = YES;
-    
+
+    // Initialize editing mode
+    self.editingMode = NO;
+
     // Apply the layout to collection view
     self.collectionView.collectionViewLayout = self.whiteboardLayout;
 }
@@ -362,7 +370,7 @@
 - (void)loadEntityPositions {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSDictionary *savedPositions = [defaults dictionaryForKey:@"ha_entity_positions"];
-    
+
     if (savedPositions) {
         self.entityPositions = [savedPositions mutableCopy];
     } else {
@@ -382,7 +390,7 @@
         CGPoint position = CGPointFromString(positionString);
         return position;
     }
-    
+
     // If no saved position, store the default position
     [self setGridPosition:defaultPosition forEntity:entityId];
     return defaultPosition;
@@ -400,15 +408,15 @@
     if (indexPath.item < self.entities.count) {
         NSDictionary *entity = self.entities[indexPath.item];
         NSString *entityId = entity[@"entity_id"];
-        
+
         // Calculate auto-placement position as fallback
         NSInteger autoRow = indexPath.item / self.whiteboardLayout.gridColumns;
         NSInteger autoCol = indexPath.item % self.whiteboardLayout.gridColumns;
         CGPoint autoPosition = CGPointMake(autoCol, autoRow);
-        
+
         return [self getGridPositionForEntity:entityId defaultPosition:autoPosition];
     }
-    
+
     return CGPointMake(0, 0);
 }
 
@@ -430,11 +438,11 @@
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
     CGPoint location = [gesture locationInView:self.collectionView];
     NSIndexPath *indexPath = [self.collectionView indexPathForItemAtPoint:location];
-    
+
     switch (gesture.state) {
         case UIGestureRecognizerStateBegan: {
             if (indexPath) {
-                [self beginDragForItemAtIndexPath:indexPath];
+                [self beginDragForItemAtIndexPath:indexPath atLocation:location];
             }
             break;
         }
@@ -452,49 +460,148 @@
     }
 }
 
-- (void)beginDragForItemAtIndexPath:(NSIndexPath *)indexPath {
+- (void)beginDragForItemAtIndexPath:(NSIndexPath *)indexPath atLocation:(CGPoint)location {
+    // Enter editing mode
+    [self setEditingMode:YES];
+
+    // Store the dragged item
+    self.draggedIndexPath = indexPath;
+
+    // Get the cell being dragged
     UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
-    if (cell) {
-        // Add visual feedback
-        [UIView animateWithDuration:0.2 animations:^{
-            cell.transform = CGAffineTransformMakeScale(1.1, 1.1);
-            cell.alpha = 0.8;
-        }];
-    }
+    if (!cell) return;
+
+    // Create a snapshot of the cell
+    UIView *cellSnapshot = [self snapshotViewFromCell:cell];
+    self.draggedCellSnapshot = cellSnapshot;
+
+    // Add snapshot to collection view
+    [self.collectionView addSubview:cellSnapshot];
+
+    // Position the snapshot at the cell's current location
+    cellSnapshot.center = cell.center;
+    self.draggedCellCenter = cell.center;
+
+    // Hide the original cell
+    cell.hidden = YES;
+
+    // Animate the snapshot to indicate dragging
+    [UIView animateWithDuration:0.2 animations:^{
+        cellSnapshot.transform = CGAffineTransformMakeScale(1.05, 1.05);
+        cellSnapshot.alpha = 0.9;
+    }];
 }
 
 - (void)updateDragAtLocation:(CGPoint)location {
-    // Visual feedback during drag - could highlight target grid position
+    if (!self.draggedCellSnapshot) return;
+
+    // Move the snapshot to follow the finger
+    self.draggedCellSnapshot.center = location;
+
+    // Calculate target grid position and provide visual feedback
     CGPoint gridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
-    
-    // Provide visual feedback here if needed
-    // For now, just ensure the dragged cell follows the gesture
+
+    // Optional: Add highlighting for target position
+    // This could be implemented by updating empty slot views to show as highlighted
 }
 
 - (void)endDragAtLocation:(CGPoint)location {
-    NSIndexPath *sourceIndexPath = [self.collectionView indexPathForItemAtPoint:location];
-    
-    if (sourceIndexPath) {
-        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:sourceIndexPath];
-        
-        // Calculate new grid position
-        CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
-        
-        // Check if position is valid
-        if ([self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1)]) {
-            // Update the position
-            [self didMoveItemAtIndexPath:sourceIndexPath toGridPosition:newGridPosition];
-            
-            // Reload layout to apply new position
+    if (!self.draggedIndexPath || !self.draggedCellSnapshot) {
+        [self setEditingMode:NO];
+        return;
+    }
+
+    // Calculate the target grid position
+    CGPoint newGridPosition = [self.whiteboardLayout gridPositionFromPoint:location];
+
+    // Get the original cell
+    UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];
+
+    // Check if the new position is valid
+    BOOL positionIsValid = [self.whiteboardLayout isGridPositionValid:newGridPosition withSize:CGSizeMake(1, 1)];
+
+    if (positionIsValid) {
+        // Update the entity position
+        [self didMoveItemAtIndexPath:self.draggedIndexPath toGridPosition:newGridPosition];
+
+        // Animate to the new position
+        CGRect targetFrame = [self.whiteboardLayout frameForGridPosition:newGridPosition size:CGSizeMake(1, 1)];
+
+        [UIView animateWithDuration:0.3 animations:^{
+            self.draggedCellSnapshot.center = CGPointMake(CGRectGetMidX(targetFrame), CGRectGetMidY(targetFrame));
+            self.draggedCellSnapshot.transform = CGAffineTransformIdentity;
+            self.draggedCellSnapshot.alpha = 1.0;
+        } completion:^(BOOL finished) {
+            // Reload the layout to apply the new position
             [self.collectionView.collectionViewLayout invalidateLayout];
-        }
-        
-        // Reset visual state
-        [UIView animateWithDuration:0.2 animations:^{
-            cell.transform = CGAffineTransformIdentity;
-            cell.alpha = 1.0;
+            [self.collectionView layoutIfNeeded];
+
+            // Clean up
+            [self cleanupDragOperation];
+        }];
+    } else {
+        // Invalid position - animate back to original position
+        [UIView animateWithDuration:0.3 animations:^{
+            self.draggedCellSnapshot.center = self.draggedCellCenter;
+            self.draggedCellSnapshot.transform = CGAffineTransformIdentity;
+            self.draggedCellSnapshot.alpha = 1.0;
+        } completion:^(BOOL finished) {
+            [self cleanupDragOperation];
         }];
     }
+}
+
+- (UIView *)snapshotViewFromCell:(UICollectionViewCell *)cell {
+    // Create a snapshot image of the cell
+    UIGraphicsBeginImageContextWithOptions(cell.bounds.size, NO, 0.0);
+    [cell.layer renderInContext:UIGraphicsGetCurrentContext()];
+    UIImage *cellImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    // Create a view with the snapshot image
+    UIImageView *snapshotView = [[UIImageView alloc] initWithImage:cellImage];
+    snapshotView.frame = cell.frame;
+
+    // Add shadow for better visual feedback
+    snapshotView.layer.shadowColor = [UIColor blackColor].CGColor;
+    snapshotView.layer.shadowOffset = CGSizeMake(0, 5);
+    snapshotView.layer.shadowOpacity = 0.3;
+    snapshotView.layer.shadowRadius = 10;
+
+    return snapshotView;
+}
+
+- (void)cleanupDragOperation {
+    // Show the original cell
+    if (self.draggedIndexPath) {
+        UICollectionViewCell *originalCell = [self.collectionView cellForItemAtIndexPath:self.draggedIndexPath];
+        originalCell.hidden = NO;
+    }
+
+    // Remove the snapshot
+    [self.draggedCellSnapshot removeFromSuperview];
+
+    // Clear drag state
+    self.draggedIndexPath = nil;
+    self.draggedCellSnapshot = nil;
+
+    // Exit editing mode
+    [self setEditingMode:NO];
+}
+
+- (void)setEditingMode:(BOOL)editingMode {
+    if (_editingMode == editingMode) return;
+
+    _editingMode = editingMode;
+
+    // Update empty slots visibility based on editing mode
+    self.whiteboardLayout.showEmptySlots = editingMode;
+
+    // Invalidate layout to show/hide empty slots
+    [self.collectionView.collectionViewLayout invalidateLayout];
+
+    // Optional: Add visual feedback for editing mode
+    // Could change collection view background color slightly, etc.
 }
 
 #pragma mark - Action Methods
@@ -503,7 +610,7 @@
     NSInteger index = sender.tag;
     if (index < self.entities.count) {
         NSDictionary *entity = self.entities[index];
-        
+
         CustomPopupViewController *popup = [CustomPopupViewController popupWithEntity:entity
                                                                                  type:CustomPopupTypeInfo
                                                                          actionHandler:nil];
@@ -519,7 +626,7 @@
                                                                      actionHandler:^(NSString *action, NSDictionary *parameters) {
         NSString *entityId = entity[@"entity_id"];
         NSString *state = entity[@"state"];
-        
+
         if ([action isEqualToString:@"increase_temp"] || [action isEqualToString:@"decrease_temp"]) {
             NSNumber *temperature = parameters[@"temperature"];
             if (temperature) {
@@ -541,7 +648,7 @@
                                                                              type:CustomPopupTypeCoverControl
                                                                      actionHandler:^(NSString *action, NSDictionary *parameters) {
         NSString *entityId = entity[@"entity_id"];
-        
+
         if ([action isEqualToString:@"open"]) {
             [self.homeAssistantClient callService:@"cover" service:@"open_cover" entityId:entityId];
         } else if ([action isEqualToString:@"close"]) {
@@ -558,7 +665,7 @@
                                                                              type:CustomPopupTypeLockControl
                                                                      actionHandler:^(NSString *action, NSDictionary *parameters) {
         NSString *entityId = entity[@"entity_id"];
-        
+
         if ([action isEqualToString:@"lock"]) {
             [self.homeAssistantClient callService:@"lock" service:@"lock" entityId:entityId];
         } else if ([action isEqualToString:@"unlock"]) {
@@ -569,14 +676,14 @@
 }
 
 - (void)setClimateTemperature:(float)temperature forEntityId:(NSString *)entityId {
-    [self.homeAssistantClient callClimateService:@"set_temperature" 
-                                        entityId:entityId 
+    [self.homeAssistantClient callClimateService:@"set_temperature"
+                                        entityId:entityId
                                      temperature:temperature];
 }
 
 - (void)animateCardTap:(EntityCardCell *)cell {
     if (!cell) return;
-    
+
     // Scale animation for visual feedback
     [UIView animateWithDuration:0.1 animations:^{
         cell.transform = CGAffineTransformMakeScale(0.95, 0.95);
