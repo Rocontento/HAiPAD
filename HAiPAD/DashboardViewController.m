@@ -34,6 +34,11 @@
 @property (nonatomic, strong) UIButton *toggleButton;
 @property (nonatomic, strong) NSLayoutConstraint *collectionViewTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *navigationBarHeightConstraint;
+// Customization properties
+@property (nonatomic, strong) UIColor *dashboardBackgroundColor;
+@property (nonatomic, strong) UIColor *navbarColor;
+@property (nonatomic, strong) UIImage *backgroundImage;
+@property (nonatomic, assign) NSInteger backgroundType; // 0 = color, 1 = image
 @end
 
 @implementation DashboardViewController
@@ -90,6 +95,10 @@
     [self loadEntitySettings];
     [self loadEntityPositions];
     [self loadEntitySizes];
+    
+    // Load and apply customization settings
+    [self loadCustomizationSettings];
+    [self applyCustomizationSettings];
 
     // Set up refresh control for iOS 9.3.5 compatibility
     self.refreshControl = [[UIRefreshControl alloc] init];
@@ -114,6 +123,10 @@
 
     // Reload layout to apply any column changes
     [self.collectionView.collectionViewLayout invalidateLayout];
+    
+    // Reload and apply customization settings in case they changed
+    [self loadCustomizationSettings];
+    [self applyCustomizationSettings];
 
     if (self.homeAssistantClient.isConnected) {
         // Update status label immediately if already connected
@@ -1149,6 +1162,93 @@
     if ([cell isKindOfClass:[EntityCardCell class]]) {
         [cell configureWithEntity:updatedEntity];
         [self animateEntityUpdate:cell];
+    }
+}
+
+#pragma mark - Customization Settings
+
+- (void)loadCustomizationSettings {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    // Load dashboard background color
+    NSData *dashboardColorData = [defaults dataForKey:@"ha_dashboard_background_color"];
+    if (dashboardColorData) {
+        self.dashboardBackgroundColor = [NSKeyedUnarchiver unarchiveObjectWithData:dashboardColorData];
+    } else {
+        self.dashboardBackgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0]; // Default
+    }
+    
+    // Load navbar color
+    NSData *navbarColorData = [defaults dataForKey:@"ha_navbar_color"];
+    if (navbarColorData) {
+        self.navbarColor = [NSKeyedUnarchiver unarchiveObjectWithData:navbarColorData];
+    } else {
+        self.navbarColor = [UIColor colorWithWhite:0.98 alpha:1.0]; // Default
+    }
+    
+    // Load background image
+    NSData *backgroundImageData = [defaults dataForKey:@"ha_background_image"];
+    if (backgroundImageData) {
+        self.backgroundImage = [UIImage imageWithData:backgroundImageData];
+    }
+    
+    // Load background type
+    self.backgroundType = [defaults integerForKey:@"ha_background_type"];
+}
+
+- (void)applyCustomizationSettings {
+    // Apply navbar color
+    if (self.navigationBarView && self.navbarColor) {
+        self.navigationBarView.backgroundColor = self.navbarColor;
+    }
+    
+    // Apply dashboard background
+    if (self.collectionView) {
+        if (self.backgroundType == 1 && self.backgroundImage) {
+            // Use background image
+            [self applyBackgroundImage];
+        } else {
+            // Use background color
+            self.collectionView.backgroundColor = self.dashboardBackgroundColor;
+            // Remove any existing background image view
+            [self removeBackgroundImageView];
+        }
+    }
+}
+
+- (void)applyBackgroundImage {
+    if (!self.backgroundImage || !self.collectionView) return;
+    
+    // Remove any existing background image view
+    [self removeBackgroundImageView];
+    
+    // Create and configure background image view
+    UIImageView *backgroundImageView = [[UIImageView alloc] initWithImage:self.backgroundImage];
+    backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
+    backgroundImageView.clipsToBounds = YES;
+    backgroundImageView.tag = 9999; // Tag for easy identification
+    
+    // Insert background image view behind all other views
+    [self.collectionView insertSubview:backgroundImageView atIndex:0];
+    
+    // Set up auto layout constraints
+    backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [backgroundImageView.topAnchor constraintEqualToAnchor:self.collectionView.topAnchor],
+        [backgroundImageView.leadingAnchor constraintEqualToAnchor:self.collectionView.leadingAnchor],
+        [backgroundImageView.trailingAnchor constraintEqualToAnchor:self.collectionView.trailingAnchor],
+        [backgroundImageView.bottomAnchor constraintEqualToAnchor:self.collectionView.bottomAnchor]
+    ]];
+    
+    // Make collection view background transparent to show the image
+    self.collectionView.backgroundColor = [UIColor clearColor];
+}
+
+- (void)removeBackgroundImageView {
+    // Find and remove any existing background image view
+    UIView *existingBackgroundView = [self.collectionView viewWithTag:9999];
+    if (existingBackgroundView) {
+        [existingBackgroundView removeFromSuperview];
     }
 }
 
