@@ -17,9 +17,11 @@
 @property (weak, nonatomic) IBOutlet UIButton *configButton;
 @property (weak, nonatomic) IBOutlet UIButton *refreshButton;
 @property (weak, nonatomic) IBOutlet UIButton *entitiesButton;
+@property (weak, nonatomic) IBOutlet UIButton *doneEditingButton;
 
 - (IBAction)configButtonTapped:(id)sender;
 - (IBAction)refreshButtonTapped:(id)sender;
 - (IBAction)entitiesButtonTapped:(id)sender;
+- (IBAction)doneEditingButtonTapped:(id)sender;
 
 @end

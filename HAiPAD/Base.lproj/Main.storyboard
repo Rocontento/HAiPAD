@@ -30,6 +30,15 @@
                                         <color key="textColor" red="1" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                         <nil key="highlightedColor"/>
                                     </label>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="done-edit-btn">
+                                        <rect key="frame" x="85" y="15" width="70" height="30"/>
+                                        <state key="normal" title="Done editing">
+                                            <color key="titleColor" red="0.0" green="0.478" blue="1.0" alpha="1" colorSpace="calibratedRGB"/>
+                                        </state>
+                                        <connections>
+                                            <action selector="doneEditingButtonTapped:" destination="BYZ-38-t0r" eventType="touchUpInside" id="done-edit-action"/>
+                                        </connections>
+                                    </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Bfi-3H-dKE">
                                         <rect key="frame" x="311" y="15" width="48" height="30"/>
                                         <state key="normal" title="Config"/>
@@ -63,6 +72,9 @@
                                     <constraint firstItem="K3C-gf-Ucr" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="zC8-cl-vWf"/>
                                     <constraint firstItem="K3C-gf-Ucr" firstAttribute="leading" secondItem="abc-def-ghi" secondAttribute="trailing" constant="8" id="abc-123-xyz"/>
                                     <constraint firstItem="abc-def-ghi" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="def-456-uvw"/>
+                                    <constraint firstItem="done-edit-btn" firstAttribute="centerY" secondItem="hJe-4k-Zch" secondAttribute="centerY" id="done-edit-centerY"/>
+                                    <constraint firstItem="done-edit-btn" firstAttribute="leading" secondItem="gx3-NM-7hc" secondAttribute="trailing" constant="8" id="done-edit-leading"/>
+                                    <constraint firstItem="abc-def-ghi" firstAttribute="leading" secondItem="done-edit-btn" secondAttribute="trailing" constant="8" id="done-edit-trailing"/>
                                 </constraints>
                             </view>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="UXe-Fd-dLJ">
@@ -156,6 +168,7 @@
                         <outlet property="statusLabel" destination="gx3-NM-7hc" id="Pya-rV-Bb3"/>
                         <outlet property="collectionView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
                         <outlet property="entitiesButton" destination="abc-def-ghi" id="stu-vwx-yz1"/>
+                        <outlet property="doneEditingButton" destination="done-edit-btn" id="done-edit-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

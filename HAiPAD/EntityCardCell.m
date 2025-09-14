@@ -35,6 +35,9 @@
     self.infoButton.layer.cornerRadius = 10.0;
     self.infoButton.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     [self.infoButton setTitleColor:[UIColor grayColor] forState:UIControlStateNormal];
+    
+    // Setup resize handles
+    [self setupResizeHandles];
 }
 
 - (void)prepareForReuse {
@@ -204,6 +207,110 @@
         self.cardContainerView.backgroundColor = [UIColor whiteColor];
         self.nameLabel.textColor = [UIColor darkTextColor];
         self.cardContainerView.layer.borderWidth = 0.0;
+    }
+}
+
+#pragma mark - Resize Handles Setup
+
+- (void)setupResizeHandles {
+    // Create resize handles with iOS 18 style
+    CGFloat handleSize = 20.0;
+    UIColor *handleColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0]; // iOS blue
+    
+    // Bottom-right handle (primary resize handle)
+    self.resizeHandleBottomRight = [[UIView alloc] initWithFrame:CGRectMake(0, 0, handleSize, handleSize)];
+    self.resizeHandleBottomRight.backgroundColor = handleColor;
+    self.resizeHandleBottomRight.layer.cornerRadius = handleSize / 2;
+    self.resizeHandleBottomRight.layer.borderWidth = 2.0;
+    self.resizeHandleBottomRight.layer.borderColor = [UIColor whiteColor].CGColor;
+    self.resizeHandleBottomRight.hidden = YES; // Hidden by default
+    [self.cardContainerView addSubview:self.resizeHandleBottomRight];
+    
+    // Top-left handle
+    self.resizeHandleTopLeft = [[UIView alloc] initWithFrame:CGRectMake(0, 0, handleSize, handleSize)];
+    self.resizeHandleTopLeft.backgroundColor = handleColor;
+    self.resizeHandleTopLeft.layer.cornerRadius = handleSize / 2;
+    self.resizeHandleTopLeft.layer.borderWidth = 2.0;
+    self.resizeHandleTopLeft.layer.borderColor = [UIColor whiteColor].CGColor;
+    self.resizeHandleTopLeft.hidden = YES;
+    [self.cardContainerView addSubview:self.resizeHandleTopLeft];
+    
+    // Top-right handle
+    self.resizeHandleTopRight = [[UIView alloc] initWithFrame:CGRectMake(0, 0, handleSize, handleSize)];
+    self.resizeHandleTopRight.backgroundColor = handleColor;
+    self.resizeHandleTopRight.layer.cornerRadius = handleSize / 2;
+    self.resizeHandleTopRight.layer.borderWidth = 2.0;
+    self.resizeHandleTopRight.layer.borderColor = [UIColor whiteColor].CGColor;
+    self.resizeHandleTopRight.hidden = YES;
+    [self.cardContainerView addSubview:self.resizeHandleTopRight];
+    
+    // Bottom-left handle
+    self.resizeHandleBottomLeft = [[UIView alloc] initWithFrame:CGRectMake(0, 0, handleSize, handleSize)];
+    self.resizeHandleBottomLeft.backgroundColor = handleColor;
+    self.resizeHandleBottomLeft.layer.cornerRadius = handleSize / 2;
+    self.resizeHandleBottomLeft.layer.borderWidth = 2.0;
+    self.resizeHandleBottomLeft.layer.borderColor = [UIColor whiteColor].CGColor;
+    self.resizeHandleBottomLeft.hidden = YES;
+    [self.cardContainerView addSubview:self.resizeHandleBottomLeft];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    
+    // Position resize handles at the corners
+    CGFloat handleSize = 20.0;
+    CGFloat offset = handleSize / 2;
+    CGRect bounds = self.cardContainerView.bounds;
+    
+    // Position handles at corners
+    self.resizeHandleTopLeft.center = CGPointMake(-offset, -offset);
+    self.resizeHandleTopRight.center = CGPointMake(bounds.size.width + offset, -offset);
+    self.resizeHandleBottomLeft.center = CGPointMake(-offset, bounds.size.height + offset);
+    self.resizeHandleBottomRight.center = CGPointMake(bounds.size.width + offset, bounds.size.height + offset);
+}
+
+- (void)setEditModeEnabled:(BOOL)enabled animated:(BOOL)animated {
+    if (_editModeEnabled == enabled) return;
+    
+    _editModeEnabled = enabled;
+    
+    // Show/hide resize handles
+    void (^animationBlock)(void) = ^{
+        self.resizeHandleBottomRight.alpha = enabled ? 1.0 : 0.0;
+        self.resizeHandleTopLeft.alpha = enabled ? 1.0 : 0.0;
+        self.resizeHandleTopRight.alpha = enabled ? 1.0 : 0.0;
+        self.resizeHandleBottomLeft.alpha = enabled ? 1.0 : 0.0;
+        
+        // Add subtle border in edit mode
+        if (enabled) {
+            self.cardContainerView.layer.borderWidth = 1.0;
+            self.cardContainerView.layer.borderColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:0.3].CGColor;
+        } else {
+            // Only remove edit border, preserve entity state borders
+            if (self.cardContainerView.layer.borderColor == [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:0.3].CGColor) {
+                self.cardContainerView.layer.borderWidth = 0.0;
+            }
+        }
+    };
+    
+    // Show/hide handles immediately
+    self.resizeHandleBottomRight.hidden = !enabled;
+    self.resizeHandleTopLeft.hidden = !enabled;
+    self.resizeHandleTopRight.hidden = !enabled;
+    self.resizeHandleBottomLeft.hidden = !enabled;
+    
+    if (animated) {
+        // Set initial alpha for animation
+        if (enabled) {
+            self.resizeHandleBottomRight.alpha = 0.0;
+            self.resizeHandleTopLeft.alpha = 0.0;
+            self.resizeHandleTopRight.alpha = 0.0;
+            self.resizeHandleBottomLeft.alpha = 0.0;
+        }
+        
+        [UIView animateWithDuration:0.3 animations:animationBlock];
+    } else {
+        animationBlock();
     }
 }
 

@@ -57,9 +57,9 @@
             forSupplementaryViewOfKind:@"EmptySlot"
                    withReuseIdentifier:@"EmptyGridSlotView"];
 
-    // Add long press gesture for dragging cards
+    // Add long press gesture for dragging cards - iOS 18 style with 0.8s duration
     self.longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
-    self.longPressGesture.minimumPressDuration = 0.5;
+    self.longPressGesture.minimumPressDuration = 0.8;
     [self.collectionView addGestureRecognizer:self.longPressGesture];
 
     // Register cell from storyboard
@@ -79,6 +79,9 @@
     // Add refresh control to collection view
     [self.collectionView addSubview:self.refreshControl];
     [self.collectionView sendSubviewToBack:self.refreshControl];
+    
+    // Setup Done editing button - initially hidden
+    [self setupDoneEditingButton];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -168,6 +171,25 @@
 
     UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:entitiesVC];
     [self presentViewController:navController animated:YES completion:nil];
+}
+
+- (IBAction)doneEditingButtonTapped:(id)sender {
+    [self setEditingMode:NO];
+}
+
+#pragma mark - Done Editing Button Setup
+
+- (void)setupDoneEditingButton {
+    if (self.doneEditingButton) {
+        // Configure the button appearance
+        [self.doneEditingButton setTitle:@"Done editing" forState:UIControlStateNormal];
+        [self.doneEditingButton setTitleColor:[UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0] forState:UIControlStateNormal]; // iOS blue
+        self.doneEditingButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+        
+        // Initially hidden
+        self.doneEditingButton.hidden = YES;
+        self.doneEditingButton.alpha = 0.0;
+    }
 }
 
 - (void)filterEntitiesBasedOnSettings {
@@ -318,6 +340,9 @@
     // Add target for info button
     [cell.infoButton addTarget:self action:@selector(infoButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     cell.infoButton.tag = indexPath.item;
+    
+    // Configure edit mode for the cell
+    [cell setEditModeEnabled:self.editingMode animated:NO];
 
     return cell;
 }
@@ -648,8 +673,61 @@
     // Invalidate layout to show/hide empty slots
     [self.collectionView.collectionViewLayout invalidateLayout];
 
-    // Optional: Add visual feedback for editing mode
-    // Could change collection view background color slightly, etc.
+    // Show/hide Done editing button with animation
+    if (editingMode) {
+        // Entering edit mode
+        self.doneEditingButton.hidden = NO;
+        [UIView animateWithDuration:0.3 animations:^{
+            self.doneEditingButton.alpha = 1.0;
+        }];
+        
+        // Add blue flash animation to indicate edit mode entry
+        [self addBlueFlashAnimation];
+    } else {
+        // Exiting edit mode
+        [UIView animateWithDuration:0.3 animations:^{
+            self.doneEditingButton.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            self.doneEditingButton.hidden = YES;
+        }];
+    }
+    
+    // Update all visible cells to show/hide resize handles
+    [self updateCellsEditMode:editingMode];
+}
+
+- (void)updateCellsEditMode:(BOOL)editingMode {
+    NSArray *visibleIndexPaths = [self.collectionView indexPathsForVisibleItems];
+    
+    for (NSIndexPath *indexPath in visibleIndexPaths) {
+        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+        if ([cell isKindOfClass:[EntityCardCell class]]) {
+            EntityCardCell *entityCell = (EntityCardCell *)cell;
+            [entityCell setEditModeEnabled:editingMode animated:YES];
+        }
+    }
+}
+
+#pragma mark - Edit Mode Visual Feedback
+
+- (void)addBlueFlashAnimation {
+    // Create a blue overlay for the flash animation
+    UIView *flashOverlay = [[UIView alloc] initWithFrame:self.collectionView.bounds];
+    flashOverlay.backgroundColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:0.3]; // iOS blue with transparency
+    flashOverlay.alpha = 0.0;
+    
+    [self.collectionView addSubview:flashOverlay];
+    
+    // Animate the flash
+    [UIView animateWithDuration:0.2 animations:^{
+        flashOverlay.alpha = 1.0;
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.3 animations:^{
+            flashOverlay.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            [flashOverlay removeFromSuperview];
+        }];
+    }];
 }
 
 #pragma mark - Action Methods
