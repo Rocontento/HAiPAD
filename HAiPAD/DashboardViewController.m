@@ -50,8 +50,8 @@
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
 
-    // Initialize navigation bar state
-    self.navigationBarHidden = NO;
+    // Initialize navigation bar state - hidden by default
+    self.navigationBarHidden = YES;
 
     // Set up whiteboard grid layout
     [self setupWhiteboardLayout];
@@ -79,6 +79,9 @@
 
     // Set up navigation bar toggle functionality
     [self setupNavigationBarToggle];
+    
+    // Initialize navigation bar to hidden state
+    [self initializeNavigationBarState];
 
     // Load saved configuration
     [self loadConfiguration];
@@ -241,8 +244,8 @@
         [self.toggleButton.heightAnchor constraintEqualToConstant:30]
     ]];
     
-    // Initially hide the toggle button since nav bar is visible
-    self.toggleButton.hidden = YES;
+    // Initially show the toggle button since nav bar is hidden by default
+    self.toggleButton.hidden = NO;
     
     // Add double-tap gesture to collection view to show nav bar when hidden
     UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
@@ -270,6 +273,30 @@
             break;
         }
     }
+}
+
+- (void)initializeNavigationBarState {
+    // Set initial visual state based on navigationBarHidden property
+    if (self.navigationBarHidden) {
+        // Hide navigation bar immediately without animation
+        if (self.navigationBarHeightConstraint) {
+            self.navigationBarHeightConstraint.constant = 0;
+        }
+        self.navigationBarView.alpha = 0.0;
+        self.toggleButton.hidden = NO;
+        self.toggleButton.alpha = 1.0;
+    } else {
+        // Show navigation bar
+        if (self.navigationBarHeightConstraint) {
+            self.navigationBarHeightConstraint.constant = 60;
+        }
+        self.navigationBarView.alpha = 1.0;
+        self.toggleButton.hidden = YES;
+        self.toggleButton.alpha = 0.0;
+    }
+    
+    // Apply layout changes immediately
+    [self.view layoutIfNeeded];
 }
 
 - (IBAction)toggleNavigationBarTapped:(id)sender {
