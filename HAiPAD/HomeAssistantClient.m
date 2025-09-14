@@ -23,6 +23,10 @@
 @property (nonatomic, strong) NSTimer *reconnectTimer;
 @property (nonatomic, assign) NSInteger websocketId;
 @property (nonatomic, strong) NSMutableDictionary *entitiesState;
+@property (nonatomic, assign) NSTimeInterval webSocketReconnectDelay;
+@property (nonatomic, assign) NSInteger reconnectAttempts;
+@property (nonatomic, strong) NSTimer *heartbeatTimer;
+@property (nonatomic, assign) BOOL awaitingHeartbeatResponse;
 @end
 
 @implementation HomeAssistantClient
@@ -47,15 +51,18 @@
         _webSocketConnected = NO;
         _autoRefreshEnabled = YES;
         
-        // Load refresh interval from user defaults
+        // Load refresh interval from user defaults with faster default
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
         _autoRefreshInterval = [defaults doubleForKey:@"ha_auto_refresh_interval"];
         if (_autoRefreshInterval <= 0) {
-            _autoRefreshInterval = 2.0; // Default 2 seconds for fast updates
+            _autoRefreshInterval = 1.0; // Faster default: 1 second for better responsiveness
         }
         
         _websocketId = 1;
         _entitiesState = [NSMutableDictionary dictionary];
+        _webSocketReconnectDelay = 1.0; // Start with 1 second delay
+        _reconnectAttempts = 0;
+        _awaitingHeartbeatResponse = NO;
         
         // Create WebSocket session only on iOS 13+
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
@@ -80,6 +87,9 @@
     // Stop auto refresh
     [self stopAutoRefresh];
     
+    // Stop heartbeat
+    [self stopWebSocketHeartbeat];
+    
     // Disconnect WebSocket
     [self disconnectWebSocket];
     
@@ -87,6 +97,10 @@
     if ([self.delegate respondsToSelector:@selector(homeAssistantClientDidDisconnect:)]) {
         [self.delegate homeAssistantClientDidDisconnect:self];
     }
+}
+
+- (BOOL)isWebSocketConnected {
+    return self.webSocketConnected;
 }
 
 - (void)testConnection {
@@ -194,6 +208,12 @@
 
 - (void)callService:(NSString *)domain service:(NSString *)service entityId:(NSString *)entityId {
     if (!self.isConnected) {
+        NSError *error = [NSError errorWithDomain:@"HomeAssistantError" 
+                                             code:-1 
+                                         userInfo:@{NSLocalizedDescriptionKey: @"Not connected to Home Assistant"}];
+        if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+            [self.delegate homeAssistantClient:self didFailWithError:error];
+        }
         return;
     }
     
@@ -214,24 +234,62 @@
         
         NSURLSessionDataTask *task = [self.urlSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+                
                 if (error) {
+                    NSLog(@"Service call failed for %@.%@ on %@: %@", domain, service, entityId, error.localizedDescription);
                     if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
                         [self.delegate homeAssistantClient:self didFailWithError:error];
                     }
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:serviceCallDidFailForEntity:withError:)]) {
+                        [self.delegate homeAssistantClient:self serviceCallDidFailForEntity:entityId withError:error];
+                    }
+                    return;
                 }
-                // Refresh states after service call with a much shorter delay for better responsiveness
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([self serviceCallDelay] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                
+                if (httpResponse.statusCode < 200 || httpResponse.statusCode >= 300) {
+                    NSLog(@"Service call failed with HTTP %ld for %@.%@ on %@", (long)httpResponse.statusCode, domain, service, entityId);
+                    NSError *httpError = [NSError errorWithDomain:@"HomeAssistantError" 
+                                                             code:httpResponse.statusCode 
+                                                         userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Service call failed with HTTP %ld", (long)httpResponse.statusCode]}];
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+                        [self.delegate homeAssistantClient:self didFailWithError:httpError];
+                    }
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:serviceCallDidFailForEntity:withError:)]) {
+                        [self.delegate homeAssistantClient:self serviceCallDidFailForEntity:entityId withError:httpError];
+                    }
+                    return;
+                }
+                
+                NSLog(@"Service call successful for %@.%@ on %@", domain, service, entityId);
+                
+                if ([self.delegate respondsToSelector:@selector(homeAssistantClient:serviceCallDidSucceedForEntity:)]) {
+                    [self.delegate homeAssistantClient:self serviceCallDidSucceedForEntity:entityId];
+                }
+                
+                // Refresh states after successful service call with shorter delay for better responsiveness
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self fetchStates];
                 });
             });
         }];
         
         [task resume];
+    } else {
+        if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+            [self.delegate homeAssistantClient:self didFailWithError:jsonError];
+        }
     }
 }
 
 - (void)callClimateService:(NSString *)service entityId:(NSString *)entityId temperature:(float)temperature {
     if (!self.isConnected) {
+        NSError *error = [NSError errorWithDomain:@"HomeAssistantError" 
+                                             code:-1 
+                                         userInfo:@{NSLocalizedDescriptionKey: @"Not connected to Home Assistant"}];
+        if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+            [self.delegate homeAssistantClient:self didFailWithError:error];
+        }
         return;
     }
     
@@ -255,19 +313,51 @@
         
         NSURLSessionDataTask *task = [self.urlSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+                
                 if (error) {
+                    NSLog(@"Climate service call failed for %@ on %@: %@", service, entityId, error.localizedDescription);
                     if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
                         [self.delegate homeAssistantClient:self didFailWithError:error];
                     }
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:serviceCallDidFailForEntity:withError:)]) {
+                        [self.delegate homeAssistantClient:self serviceCallDidFailForEntity:entityId withError:error];
+                    }
+                    return;
                 }
-                // Refresh states after service call with a much shorter delay for better responsiveness
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([self serviceCallDelay] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                
+                if (httpResponse.statusCode < 200 || httpResponse.statusCode >= 300) {
+                    NSLog(@"Climate service call failed with HTTP %ld for %@ on %@", (long)httpResponse.statusCode, service, entityId);
+                    NSError *httpError = [NSError errorWithDomain:@"HomeAssistantError" 
+                                                             code:httpResponse.statusCode 
+                                                         userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Climate service call failed with HTTP %ld", (long)httpResponse.statusCode]}];
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+                        [self.delegate homeAssistantClient:self didFailWithError:httpError];
+                    }
+                    if ([self.delegate respondsToSelector:@selector(homeAssistantClient:serviceCallDidFailForEntity:withError:)]) {
+                        [self.delegate homeAssistantClient:self serviceCallDidFailForEntity:entityId withError:httpError];
+                    }
+                    return;
+                }
+                
+                NSLog(@"Climate service call successful for %@ on %@", service, entityId);
+                
+                if ([self.delegate respondsToSelector:@selector(homeAssistantClient:serviceCallDidSucceedForEntity:)]) {
+                    [self.delegate homeAssistantClient:self serviceCallDidSucceedForEntity:entityId];
+                }
+                
+                // Refresh states after successful service call
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self fetchStates];
                 });
             });
         }];
         
         [task resume];
+    } else {
+        if ([self.delegate respondsToSelector:@selector(homeAssistantClient:didFailWithError:)]) {
+            [self.delegate homeAssistantClient:self didFailWithError:jsonError];
+        }
     }
 }
 
@@ -303,9 +393,23 @@
 }
 
 - (void)autoRefreshTimerFired:(NSTimer *)timer {
-    if (self.isConnected && !self.webSocketConnected) {
+    if (self.isConnected) {
         // Only fetch via HTTP if WebSocket is not connected
-        [self fetchStates];
+        // This prevents redundant HTTP requests when WebSocket is working
+        if (!self.webSocketConnected) {
+            NSLog(@"Auto-refreshing via HTTP (WebSocket not connected)");
+            [self fetchStates];
+        } else {
+            // WebSocket is connected, but we still do occasional HTTP polling 
+            // to catch any missed updates (every 10th interval)
+            static NSInteger pollCounter = 0;
+            pollCounter++;
+            if (pollCounter >= 10) {
+                NSLog(@"Periodic HTTP state validation while WebSocket connected");
+                [self fetchStates];
+                pollCounter = 0;
+            }
+        }
     }
 }
 
@@ -313,6 +417,7 @@
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
     if (@available(iOS 13.0, *)) {
         if (self.webSocketTask) {
+            NSLog(@"WebSocket already connecting or connected");
             return; // Already connecting or connected
         }
         
@@ -332,13 +437,19 @@
             return;
         }
         
+        NSLog(@"Attempting WebSocket connection to: %@", wsURL);
+        
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.timeoutInterval = 30.0; // Set connection timeout
         
         self.webSocketTask = [self.webSocketSession webSocketTaskWithRequest:request];
         [self.webSocketTask resume];
         
         // Start receiving messages
         [self receiveWebSocketMessage];
+        
+        // Reset reconnect attempts on successful connection attempt
+        self.reconnectAttempts = 0;
     } else {
         NSLog(@"WebSocket not available on iOS < 13.0, using HTTP polling only");
     }
@@ -356,6 +467,8 @@
         }
     }
 #endif
+    
+    [self stopWebSocketHeartbeat];
     self.webSocketConnected = NO;
     
     // Stop reconnection timer
@@ -398,19 +511,31 @@
     }
     
     NSString *type = json[@"type"];
+    NSLog(@"WebSocket received message type: %@", type);
     
     if ([type isEqualToString:@"auth_required"]) {
         // Send authentication
         [self sendWebSocketAuth];
     } else if ([type isEqualToString:@"auth_ok"]) {
         // Authentication successful, subscribe to state changes
+        NSLog(@"WebSocket authentication successful");
         self.webSocketConnected = YES;
+        self.reconnectAttempts = 0; // Reset reconnect attempts
+        self.webSocketReconnectDelay = 1.0; // Reset delay
         [self subscribeToStateChanges];
+        [self startWebSocketHeartbeat];
     } else if ([type isEqualToString:@"auth_invalid"]) {
         NSLog(@"WebSocket authentication failed");
         [self disconnectWebSocket];
     } else if ([type isEqualToString:@"event"]) {
         [self handleStateChangeEvent:json];
+    } else if ([type isEqualToString:@"pong"]) {
+        // Handle heartbeat response
+        self.awaitingHeartbeatResponse = NO;
+        NSLog(@"WebSocket heartbeat pong received");
+    } else if ([type isEqualToString:@"result"]) {
+        // Handle subscription result
+        NSLog(@"WebSocket subscription result: %@", json[@"success"] ? @"success" : @"failed");
     }
 }
 
@@ -495,12 +620,6 @@
     }
 }
 
-- (NSTimeInterval)serviceCallDelay {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    double delay = [defaults doubleForKey:@"ha_service_call_delay"];
-    return (delay > 0) ? delay : 0.3; // Default 0.3 seconds
-}
-
 - (BOOL)isWebSocketEnabled {
     // First check if WebSocket APIs are available (iOS 13+)
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
@@ -529,32 +648,126 @@
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
 - (void)URLSession:(NSURLSession *)session webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask didOpenWithProtocol:(NSString *)protocol {
     if (@available(iOS 13.0, *)) {
-        NSLog(@"WebSocket connected");
+        NSLog(@"WebSocket connected successfully");
     }
 }
 
 - (void)URLSession:(NSURLSession *)session webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask didCloseWithCode:(NSURLSessionWebSocketCloseCode)closeCode reason:(NSData *)reason {
     if (@available(iOS 13.0, *)) {
-        NSLog(@"WebSocket disconnected with code: %ld", (long)closeCode);
+        NSString *reasonString = reason ? [[NSString alloc] initWithData:reason encoding:NSUTF8StringEncoding] : @"";
+        NSLog(@"WebSocket disconnected with code: %ld, reason: %@", (long)closeCode, reasonString);
+        
+        [self stopWebSocketHeartbeat];
         self.webSocketConnected = NO;
         self.webSocketTask = nil;
         
-        // Try to reconnect after a delay if we were previously connected
+        // Try to reconnect if we were previously connected and it wasn't a normal closure
         if (self.isConnected && closeCode != NSURLSessionWebSocketCloseCodeNormalClosure) {
-            self.reconnectTimer = [NSTimer scheduledTimerWithTimeInterval:5.0
-                                                                   target:self
-                                                                 selector:@selector(reconnectWebSocket:)
-                                                                 userInfo:nil
-                                                                  repeats:NO];
+            [self scheduleWebSocketReconnect];
         }
     }
 }
 #endif
 
+- (void)scheduleWebSocketReconnect {
+    // Stop any existing reconnect timer
+    if (self.reconnectTimer) {
+        [self.reconnectTimer invalidate];
+        self.reconnectTimer = nil;
+    }
+    
+    // Implement exponential backoff with jitter
+    self.reconnectAttempts++;
+    NSTimeInterval delay = MIN(self.webSocketReconnectDelay * pow(2, self.reconnectAttempts - 1), 30.0); // Max 30 seconds
+    
+    // Add jitter (±25%)
+    NSTimeInterval jitter = delay * 0.25 * ((arc4random() % 200) - 100) / 100.0;
+    delay += jitter;
+    
+    NSLog(@"Scheduling WebSocket reconnect in %.1f seconds (attempt %ld)", delay, (long)self.reconnectAttempts);
+    
+    self.reconnectTimer = [NSTimer scheduledTimerWithTimeInterval:delay
+                                                           target:self
+                                                         selector:@selector(reconnectWebSocket:)
+                                                         userInfo:nil
+                                                          repeats:NO];
+}
+
 - (void)reconnectWebSocket:(NSTimer *)timer {
     self.reconnectTimer = nil;
     if (self.isConnected) {
         [self connectWebSocket];
+    }
+}
+
+#pragma mark - WebSocket Heartbeat
+
+- (void)startWebSocketHeartbeat {
+    [self stopWebSocketHeartbeat];
+    
+    // Start heartbeat timer to send ping every 30 seconds
+    self.heartbeatTimer = [NSTimer scheduledTimerWithTimeInterval:30.0
+                                                           target:self
+                                                         selector:@selector(sendWebSocketHeartbeat:)
+                                                         userInfo:nil
+                                                          repeats:YES];
+}
+
+- (void)stopWebSocketHeartbeat {
+    if (self.heartbeatTimer) {
+        [self.heartbeatTimer invalidate];
+        self.heartbeatTimer = nil;
+    }
+    self.awaitingHeartbeatResponse = NO;
+}
+
+- (void)sendWebSocketHeartbeat:(NSTimer *)timer {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        if (!self.webSocketTask || !self.webSocketConnected) {
+            [self stopWebSocketHeartbeat];
+            return;
+        }
+        
+        // Check if we're still waiting for a previous pong
+        if (self.awaitingHeartbeatResponse) {
+            NSLog(@"WebSocket heartbeat timeout - connection appears dead");
+            [self handleWebSocketConnectionDead];
+            return;
+        }
+        
+        // Send ping
+        NSDictionary *pingMessage = @{
+            @"id": @(self.websocketId++),
+            @"type": @"ping"
+        };
+        
+        NSError *error;
+        NSData *data = [NSJSONSerialization dataWithJSONObject:pingMessage options:0 error:&error];
+        if (!error) {
+            NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            NSURLSessionWebSocketMessage *message = [[NSURLSessionWebSocketMessage alloc] initWithString:jsonString];
+            
+            self.awaitingHeartbeatResponse = YES;
+            
+            [self.webSocketTask sendMessage:message completionHandler:^(NSError *sendError) {
+                if (sendError) {
+                    NSLog(@"Failed to send heartbeat ping: %@", sendError.localizedDescription);
+                    [self handleWebSocketConnectionDead];
+                }
+            }];
+        }
+    }
+#endif
+}
+
+- (void)handleWebSocketConnectionDead {
+    NSLog(@"WebSocket connection appears dead, initiating reconnection");
+    [self disconnectWebSocket];
+    
+    // Trigger reconnection if we're still connected to HA
+    if (self.isConnected) {
+        [self scheduleWebSocketReconnect];
     }
 }
 

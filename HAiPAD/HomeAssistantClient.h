@@ -17,6 +17,8 @@
 - (void)homeAssistantClientDidConnect:(HomeAssistantClient *)client;
 - (void)homeAssistantClientDidDisconnect:(HomeAssistantClient *)client;
 - (void)homeAssistantClient:(HomeAssistantClient *)client didReceiveStateChange:(NSDictionary *)stateChange;
+- (void)homeAssistantClient:(HomeAssistantClient *)client serviceCallDidSucceedForEntity:(NSString *)entityId;
+- (void)homeAssistantClient:(HomeAssistantClient *)client serviceCallDidFailForEntity:(NSString *)entityId withError:(NSError *)error;
 @end
 
 @interface HomeAssistantClient : NSObject
@@ -27,6 +29,8 @@
 @property (nonatomic, readonly) BOOL isConnected;
 @property (nonatomic, assign) BOOL autoRefreshEnabled;
 @property (nonatomic, assign) NSTimeInterval autoRefreshInterval;
+@property (nonatomic, readonly) BOOL isWebSocketConnected;
+@property (nonatomic, assign) NSTimeInterval webSocketReconnectDelay;
 
 + (instancetype)sharedClient;
 

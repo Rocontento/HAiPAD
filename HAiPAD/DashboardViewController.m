@@ -25,6 +25,7 @@
 @property (nonatomic, strong) NSMutableDictionary *entityPositions; // entity_id -> NSValue(CGPoint)
 @property (nonatomic, strong) NSMutableDictionary *entitySizes; // entity_id -> NSValue(CGSize)
 @property (nonatomic, strong) UILongPressGestureRecognizer *longPressGesture;
+@property (nonatomic, strong) NSMutableDictionary *optimisticUpdates; // entity_id -> original_state
 // Drag and drop properties
 @property (nonatomic, assign) BOOL editingMode;
 @property (nonatomic, assign) BOOL hasPendingReload; // Flag to track if reload is needed after editing
@@ -54,6 +55,7 @@
     self.enabledEntityIds = [NSSet set];
     self.entityPositions = [NSMutableDictionary dictionary];
     self.entitySizes = [NSMutableDictionary dictionary];
+    self.optimisticUpdates = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
 
@@ -758,6 +760,59 @@
     // Update the entities array if we found and updated the entity
     if (found) {
         self.entities = [mutableEntities copy];
+        
+        // Clear any optimistic update for this entity since we got the real state
+        [self.optimisticUpdates removeObjectForKey:changedEntityId];
+    }
+}
+
+- (void)homeAssistantClient:(HomeAssistantClient *)client serviceCallDidSucceedForEntity:(NSString *)entityId {
+    NSLog(@"Service call succeeded for entity: %@", entityId);
+    // Clear the optimistic update since the service call was successful
+    [self.optimisticUpdates removeObjectForKey:entityId];
+}
+
+- (void)homeAssistantClient:(HomeAssistantClient *)client serviceCallDidFailForEntity:(NSString *)entityId withError:(NSError *)error {
+    NSLog(@"Service call failed for entity %@: %@", entityId, error.localizedDescription);
+    
+    // Revert the optimistic update
+    NSString *originalState = self.optimisticUpdates[entityId];
+    if (originalState) {
+        [self revertOptimisticUpdateForEntity:entityId toState:originalState];
+        [self.optimisticUpdates removeObjectForKey:entityId];
+    }
+}
+
+- (void)revertOptimisticUpdateForEntity:(NSString *)entityId toState:(NSString *)originalState {
+    // Find the entity in our current list and revert its state
+    NSMutableArray *mutableEntities = [self.entities mutableCopy];
+    
+    for (NSInteger i = 0; i < mutableEntities.count; i++) {
+        NSDictionary *entity = mutableEntities[i];
+        NSString *currentEntityId = entity[@"entity_id"];
+        
+        if ([currentEntityId isEqualToString:entityId]) {
+            // Revert the entity to its original state
+            NSMutableDictionary *revertedEntity = [entity mutableCopy];
+            revertedEntity[@"state"] = originalState;
+            mutableEntities[i] = [revertedEntity copy];
+            
+            // Update the entities array
+            self.entities = [mutableEntities copy];
+            
+            // Update the specific cell to show the reverted state
+            NSIndexPath *indexPath = [NSIndexPath indexPathForItem:i inSection:0];
+            UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+            
+            if ([cell isKindOfClass:[EntityCardCell class]]) {
+                EntityCardCell *entityCell = (EntityCardCell *)cell;
+                [entityCell configureWithEntity:revertedEntity];
+                
+                // Add a different animation to indicate the revert
+                [self animateEntityRevert:entityCell];
+            }
+            break;
+        }
     }
 }
 
@@ -1402,11 +1457,40 @@
     }];
 }
 
+- (void)animateEntityRevert:(EntityCardCell *)cell {
+    if (!cell) return;
+    
+    // Shake animation to indicate a revert/error
+    CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+    shake.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    shake.duration = 0.6;
+    shake.values = @[@(-10), @(10), @(-10), @(10), @(-5), @(5), @(-5), @(5), @(0)];
+    
+    // Also add a color flash to indicate error
+    UIColor *originalColor = cell.cardContainerView.backgroundColor;
+    [UIView animateWithDuration:0.2 animations:^{
+        cell.cardContainerView.backgroundColor = [UIColor colorWithRed:1.0 green:0.8 blue:0.8 alpha:1.0];
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.4 animations:^{
+            cell.cardContainerView.backgroundColor = originalColor;
+        }];
+    }];
+    
+    [cell.layer addAnimation:shake forKey:@"shake"];
+}
+
 - (void)updateEntityStateOptimistically:(NSIndexPath *)indexPath newState:(NSString *)newState {
     if (indexPath.item >= self.entities.count) return;
     
+    NSDictionary *originalEntity = self.entities[indexPath.item];
+    NSString *entityId = originalEntity[@"entity_id"];
+    NSString *originalState = originalEntity[@"state"];
+    
+    // Store the original state so we can revert if the service call fails
+    self.optimisticUpdates[entityId] = originalState;
+    
     // Create a mutable copy of the entity with the new state
-    NSMutableDictionary *updatedEntity = [self.entities[indexPath.item] mutableCopy];
+    NSMutableDictionary *updatedEntity = [originalEntity mutableCopy];
     updatedEntity[@"state"] = newState;
     
     // Update the entities array
