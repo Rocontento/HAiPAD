@@ -21,9 +21,24 @@
 @property (strong, nonatomic) UIView *resizeHandleTopRight;
 @property (strong, nonatomic) UIView *resizeHandleTopLeft;
 
+// Resize gesture recognizers
+@property (strong, nonatomic) UIPanGestureRecognizer *resizePanGesture;
+
 @property (nonatomic, assign) BOOL editModeEnabled;
+
+// Resize delegate
+@property (nonatomic, weak) id<EntityCardCellResizeDelegate> resizeDelegate;
 
 - (void)configureWithEntity:(NSDictionary *)entity;
 - (void)setEditModeEnabled:(BOOL)enabled animated:(BOOL)animated;
+
+@end
+
+@protocol EntityCardCellResizeDelegate <NSObject>
+@optional
+- (void)entityCardCell:(EntityCardCell *)cell didBeginResizeWithGesture:(UIPanGestureRecognizer *)gesture;
+- (void)entityCardCell:(EntityCardCell *)cell didChangeResizeWithGesture:(UIPanGestureRecognizer *)gesture;
+- (void)entityCardCell:(EntityCardCell *)cell didEndResizeWithGesture:(UIPanGestureRecognizer *)gesture;
+@end
 
 @end

@@ -252,6 +252,11 @@
     self.resizeHandleBottomLeft.layer.borderColor = [UIColor whiteColor].CGColor;
     self.resizeHandleBottomLeft.hidden = YES;
     [self.cardContainerView addSubview:self.resizeHandleBottomLeft];
+    
+    // Add pan gesture recognizer for resizing (attached to the entire cell for easier handling)
+    self.resizePanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleResizePan:)];
+    self.resizePanGesture.enabled = NO; // Disabled by default
+    [self addGestureRecognizer:self.resizePanGesture];
 }
 
 - (void)layoutSubviews {
@@ -273,6 +278,9 @@
     if (_editModeEnabled == enabled) return;
     
     _editModeEnabled = enabled;
+    
+    // Enable/disable resize gesture
+    self.resizePanGesture.enabled = enabled;
     
     // Show/hide resize handles
     void (^animationBlock)(void) = ^{
@@ -312,6 +320,62 @@
     } else {
         animationBlock();
     }
+}
+
+#pragma mark - Resize Gesture Handling
+
+- (void)handleResizePan:(UIPanGestureRecognizer *)gesture {
+    CGPoint location = [gesture locationInView:self];
+    
+    // Determine which resize handle is being used based on touch location
+    UIView *activeHandle = [self resizeHandleForLocation:location];
+    if (!activeHandle) return;
+    
+    // Delegate to the dashboard controller for resize handling
+    switch (gesture.state) {
+        case UIGestureRecognizerStateBegan:
+            if ([self.resizeDelegate respondsToSelector:@selector(entityCardCell:didBeginResizeWithGesture:)]) {
+                [self.resizeDelegate entityCardCell:self didBeginResizeWithGesture:gesture];
+            }
+            break;
+            
+        case UIGestureRecognizerStateChanged:
+            if ([self.resizeDelegate respondsToSelector:@selector(entityCardCell:didChangeResizeWithGesture:)]) {
+                [self.resizeDelegate entityCardCell:self didChangeResizeWithGesture:gesture];
+            }
+            break;
+            
+        case UIGestureRecognizerStateEnded:
+        case UIGestureRecognizerStateCancelled:
+            if ([self.resizeDelegate respondsToSelector:@selector(entityCardCell:didEndResizeWithGesture:)]) {
+                [self.resizeDelegate entityCardCell:self didEndResizeWithGesture:gesture];
+            }
+            break;
+            
+        default:
+            break;
+    }
+}
+
+- (UIView *)resizeHandleForLocation:(CGPoint)location {
+    CGFloat handleSize = 20.0;
+    CGFloat touchRadius = 30.0; // Larger touch area for easier interaction
+    
+    // Check each handle to see if the touch is within range
+    NSArray *handles = @[self.resizeHandleBottomRight, self.resizeHandleTopLeft, self.resizeHandleTopRight, self.resizeHandleBottomLeft];
+    
+    for (UIView *handle in handles) {
+        if (handle.hidden) continue;
+        
+        CGPoint handleCenter = handle.center;
+        CGFloat distance = sqrt(pow(location.x - handleCenter.x, 2) + pow(location.y - handleCenter.y, 2));
+        
+        if (distance <= touchRadius) {
+            return handle;
+        }
+    }
+    
+    return nil;
 }
 
 @end

@@ -343,6 +343,9 @@
     
     // Configure edit mode for the cell
     [cell setEditModeEnabled:self.editingMode animated:NO];
+    
+    // Set resize delegate
+    cell.resizeDelegate = self;
 
     return cell;
 }
@@ -868,6 +871,27 @@
         [cell configureWithEntity:updatedEntity];
         [self animateEntityUpdate:cell];
     }
+}
+
+#pragma mark - EntityCardCellResizeDelegate
+
+- (void)entityCardCell:(EntityCardCell *)cell didBeginResizeWithGesture:(UIPanGestureRecognizer *)gesture {
+    // TODO: Implement resize begin handling - could show grid overlay or visual feedback
+    NSLog(@"Begin resize for cell");
+}
+
+- (void)entityCardCell:(EntityCardCell *)cell didChangeResizeWithGesture:(UIPanGestureRecognizer *)gesture {
+    // TODO: Implement actual resizing with grid snapping
+    CGPoint translation = [gesture translationInView:self.collectionView];
+    NSLog(@"Resize translation: %@", NSStringFromCGPoint(translation));
+    
+    // For now, we'll implement a basic resize that doesn't affect the grid layout
+    // In a full implementation, this would modify the grid size and update the layout
+}
+
+- (void)entityCardCell:(EntityCardCell *)cell didEndResizeWithGesture:(UIPanGestureRecognizer *)gesture {
+    // TODO: Implement resize end handling - finalize new size and update layout
+    NSLog(@"End resize for cell");
 }
 
 @end
