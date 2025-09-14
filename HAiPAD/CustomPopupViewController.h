@@ -16,6 +16,12 @@ typedef NS_ENUM(NSInteger, CustomPopupType) {
     CustomPopupTypeSensorInfo
 };
 
+typedef NS_ENUM(NSInteger, CustomPopupButtonStyle) {
+    CustomPopupButtonStylePrimary,
+    CustomPopupButtonStyleSecondary,
+    CustomPopupButtonStyleCancel
+};
+
 @interface CustomPopupViewController : UIViewController
 
 @property (nonatomic, strong) NSDictionary *entity;

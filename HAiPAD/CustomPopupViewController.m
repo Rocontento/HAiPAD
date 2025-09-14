@@ -372,12 +372,6 @@
 
 #pragma mark - Button Management
 
-typedef NS_ENUM(NSInteger, CustomPopupButtonStyle) {
-    CustomPopupButtonStylePrimary,
-    CustomPopupButtonStyleSecondary,
-    CustomPopupButtonStyleCancel
-};
-
 - (void)addActionButton:(NSString *)title style:(CustomPopupButtonStyle)style action:(NSString *)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     [button setTitle:title forState:UIControlStateNormal];
