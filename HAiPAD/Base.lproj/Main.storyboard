@@ -166,6 +166,7 @@
                         <outlet property="collectionView" destination="UXe-Fd-dLJ" id="JJB-nk-agG"/>
                         <outlet property="entitiesButton" destination="abc-def-ghi" id="stu-vwx-yz1"/>
                         <outlet property="editButton" destination="edit-button" id="edit-outlet"/>
+                        <outlet property="navigationBarView" destination="hJe-4k-Zch" id="nav-bar-outlet"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

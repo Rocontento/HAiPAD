@@ -30,6 +30,11 @@
 @property (nonatomic, strong) NSIndexPath *draggedIndexPath;
 @property (nonatomic, strong) UIView *draggedCellSnapshot;
 @property (nonatomic, assign) CGPoint draggedCellCenter;
+// Navigation bar toggle properties
+@property (nonatomic, assign) BOOL navigationBarHidden;
+@property (nonatomic, strong) UIButton *toggleButton;
+@property (nonatomic, strong) NSLayoutConstraint *collectionViewTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *navigationBarHeightConstraint;
 @end
 
 @implementation DashboardViewController
@@ -45,6 +50,9 @@
     self.entitySizes = [NSMutableDictionary dictionary];
     self.homeAssistantClient = [HomeAssistantClient sharedClient];
     self.homeAssistantClient.delegate = self;
+
+    // Initialize navigation bar state
+    self.navigationBarHidden = NO;
 
     // Set up whiteboard grid layout
     [self setupWhiteboardLayout];
@@ -66,6 +74,12 @@
 
     // Register cell from storyboard
     // The cell will be registered automatically since it's defined in the storyboard
+
+    // Style navigation buttons with borders
+    [self styleNavigationButtons];
+
+    // Set up navigation bar toggle functionality
+    [self setupNavigationBarToggle];
 
     // Load saved configuration
     [self loadConfiguration];
@@ -157,6 +171,143 @@
     // Filter entities based on settings if we have entities loaded
     if (self.allEntities.count > 0) {
         [self filterEntitiesBasedOnSettings];
+    }
+}
+
+#pragma mark - Navigation Bar Styling and Toggle
+
+- (void)styleNavigationButtons {
+    NSArray *buttons = @[self.configButton, self.refreshButton, self.entitiesButton, self.editButton];
+    
+    for (UIButton *button in buttons) {
+        // Add border
+        button.layer.borderWidth = 1.0;
+        button.layer.borderColor = [UIColor colorWithWhite:0.7 alpha:1.0].CGColor;
+        button.layer.cornerRadius = 6.0;
+        
+        // Add background color for better contrast
+        button.backgroundColor = [UIColor colorWithWhite:0.98 alpha:1.0];
+        
+        // Add some padding
+        button.contentEdgeInsets = UIEdgeInsetsMake(6, 10, 6, 10);
+        
+        // Add subtle shadow
+        button.layer.shadowColor = [UIColor blackColor].CGColor;
+        button.layer.shadowOffset = CGSizeMake(0, 1);
+        button.layer.shadowOpacity = 0.1;
+        button.layer.shadowRadius = 1.0;
+        
+        // Set text color
+        [button setTitleColor:[UIColor colorWithRed:0.2 green:0.2 blue:0.2 alpha:1.0] forState:UIControlStateNormal];
+        [button setTitleColor:[UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:1.0] forState:UIControlStateHighlighted];
+    }
+}
+
+- (void)setupNavigationBarToggle {
+    // Create a small toggle button that will remain visible when nav bar is hidden
+    self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.toggleButton setTitle:@"☰" forState:UIControlStateNormal]; // Menu icon
+    self.toggleButton.titleLabel.font = [UIFont systemFontOfSize:20];
+    [self.toggleButton setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    self.toggleButton.backgroundColor = [UIColor colorWithWhite:0.95 alpha:0.9];
+    self.toggleButton.layer.cornerRadius = 15;
+    self.toggleButton.layer.borderWidth = 1.0;
+    self.toggleButton.layer.borderColor = [UIColor colorWithWhite:0.7 alpha:1.0].CGColor;
+    
+    [self.toggleButton addTarget:self action:@selector(toggleNavigationBarTapped:) forControlEvents:UIControlEventTouchUpInside];
+    
+    // Add toggle button to main view
+    self.toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.toggleButton];
+    
+    // Position toggle button in the top-right corner (iOS 9.3.5 compatible)
+    [NSLayoutConstraint activateConstraints:@[
+        [self.toggleButton.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:28], // Below status bar
+        [self.toggleButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
+        [self.toggleButton.widthAnchor constraintEqualToConstant:30],
+        [self.toggleButton.heightAnchor constraintEqualToConstant:30]
+    ]];
+    
+    // Initially hide the toggle button since nav bar is visible
+    self.toggleButton.hidden = YES;
+    
+    // Add double-tap gesture to collection view to show nav bar when hidden
+    UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
+    doubleTap.numberOfTapsRequired = 2;
+    [self.collectionView addGestureRecognizer:doubleTap];
+    
+    // Add swipe up gesture to navigation bar to hide it
+    UISwipeGestureRecognizer *swipeUp = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipeUp:)];
+    swipeUp.direction = UISwipeGestureRecognizerDirectionUp;
+    [self.navigationBarView addGestureRecognizer:swipeUp];
+    
+    // Find and store the navigation bar height constraint and collection view top constraint
+    for (NSLayoutConstraint *constraint in self.view.constraints) {
+        if (constraint.firstItem == self.collectionView && 
+            constraint.firstAttribute == NSLayoutAttributeTop &&
+            constraint.secondItem == self.navigationBarView) {
+            self.collectionViewTopConstraint = constraint;
+        }
+    }
+    
+    // Find the navigation bar height constraint
+    for (NSLayoutConstraint *constraint in self.navigationBarView.constraints) {
+        if (constraint.firstAttribute == NSLayoutAttributeHeight) {
+            self.navigationBarHeightConstraint = constraint;
+            break;
+        }
+    }
+}
+
+- (IBAction)toggleNavigationBarTapped:(id)sender {
+    self.navigationBarHidden = !self.navigationBarHidden;
+    
+    [UIView animateWithDuration:0.3 animations:^{
+        if (self.navigationBarHidden) {
+            // Hide navigation bar by setting its height to 0
+            if (self.navigationBarHeightConstraint) {
+                self.navigationBarHeightConstraint.constant = 0;
+            }
+            
+            // Fade out the navigation bar content
+            self.navigationBarView.alpha = 0.0;
+            
+            // Show toggle button
+            self.toggleButton.hidden = NO;
+            self.toggleButton.alpha = 1.0;
+        } else {
+            // Show navigation bar by restoring its height
+            if (self.navigationBarHeightConstraint) {
+                self.navigationBarHeightConstraint.constant = 60;
+            }
+            
+            // Fade in the navigation bar content
+            self.navigationBarView.alpha = 1.0;
+            
+            // Hide toggle button
+            self.toggleButton.alpha = 0.0;
+        }
+        
+        // Force layout update during animation
+        [self.view layoutIfNeeded];
+    } completion:^(BOOL finished) {
+        if (!self.navigationBarHidden) {
+            self.toggleButton.hidden = YES;
+        }
+    }];
+}
+
+- (void)handleDoubleTap:(UITapGestureRecognizer *)gesture {
+    // Only respond to double-tap when navigation bar is hidden
+    if (self.navigationBarHidden) {
+        [self toggleNavigationBarTapped:nil];
+    }
+}
+
+- (void)handleSwipeUp:(UISwipeGestureRecognizer *)gesture {
+    // Only respond to swipe up when navigation bar is visible
+    if (!self.navigationBarHidden) {
+        [self toggleNavigationBarTapped:nil];
     }
 }
 
