@@ -40,6 +40,8 @@
 
 // Visual feedback
 @property (nonatomic, assign) BOOL showEmptySlots;     // Show visual indicators for empty grid slots
+@property (nonatomic, assign) BOOL showGridOverlay;    // Show grid overlay during resizing
+@property (nonatomic, strong) UIView *gridOverlayView;  // The grid overlay view
 
 // Interaction
 @property (nonatomic, assign) BOOL allowsReordering;   // Enable drag-and-drop reordering
@@ -47,5 +49,10 @@
 - (CGPoint)gridPositionFromPoint:(CGPoint)point;
 - (CGRect)frameForGridPosition:(CGPoint)gridPosition size:(CGSize)gridSize;
 - (BOOL)isGridPositionValid:(CGPoint)gridPosition withSize:(CGSize)gridSize excludingIndexPath:(NSIndexPath *)excludingIndexPath;
+
+// Grid overlay methods for visual feedback
+- (void)showGridOverlayInView:(UIView *)view;
+- (void)hideGridOverlay;
+- (void)highlightGridCells:(CGPoint)position size:(CGSize)size;
 
 @end
