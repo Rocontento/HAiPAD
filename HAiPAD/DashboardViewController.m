@@ -335,13 +335,13 @@
     if (savedScale > 0) {
         // Use saved positioning from preview
         
-        // Calculate base scale that fits image to screen
+        // Calculate base scale that fills the screen completely (like iOS wallpapers)
         CGFloat scaleX = viewSize.width / imageSize.width;
         CGFloat scaleY = viewSize.height / imageSize.height;
-        CGFloat fitScale = MIN(scaleX, scaleY);
+        CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to ensure complete coverage
         
         // Apply user's scale adjustment
-        CGFloat finalScale = fitScale * savedScale;
+        CGFloat finalScale = fillScale * savedScale;
         CGSize scaledSize = CGSizeMake(imageSize.width * finalScale, imageSize.height * finalScale);
         
         // Calculate center position
@@ -362,9 +362,9 @@
         NSLog(@"Dashboard: Applied saved positioning - final frame: %@", NSStringFromCGRect(backgroundImageView.frame));
         
     } else {
-        // No saved positioning, use default: fill entire screen
+        // No saved positioning, use default: fill entire screen like iOS wallpapers
         
-        // Calculate scale to fill the entire view (may crop)
+        // Calculate scale to fill the entire view (may crop parts of image)
         CGFloat scaleX = viewSize.width / imageSize.width;
         CGFloat scaleY = viewSize.height / imageSize.height;
         CGFloat fillScale = MAX(scaleX, scaleY); // Use MAX to fill entire screen
@@ -393,6 +393,8 @@
     // Update status bar appearance for better visibility
     [self updateStatusBarAppearance];
 }
+
+#pragma mark - Helper Methods for Background Image
 
 - (void)updateStatusBarAppearance {
     // Only proceed if we have a background image
@@ -569,6 +571,11 @@
     } completion:^(BOOL finished) {
         if (!self.navigationBarHidden) {
             self.toggleButton.hidden = YES;
+        }
+        
+        // Reapply background image after layout changes if needed
+        if (self.backgroundType == 1 && self.backgroundImage) {
+            [self applyBackgroundImage];
         }
     }];
 }

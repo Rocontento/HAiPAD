@@ -110,27 +110,28 @@
     CGSize imageSize = self.originalImage.size;
     CGSize scrollSize = self.scrollView.bounds.size;
     
-    // Calculate scale to fit image in scroll view
+    // Calculate scales like iOS wallpaper picker
     CGFloat scaleX = scrollSize.width / imageSize.width;
     CGFloat scaleY = scrollSize.height / imageSize.height;
-    CGFloat minScale = MIN(scaleX, scaleY);
+    CGFloat fitScale = MIN(scaleX, scaleY);  // Scale to fit completely inside
+    CGFloat fillScale = MAX(scaleX, scaleY); // Scale to fill entire screen (iOS wallpaper default)
     
-    // Set zoom scales
-    self.scrollView.minimumZoomScale = minScale * 0.5; // Allow zoom out
-    self.scrollView.maximumZoomScale = minScale * 4.0; // Allow zoom in
-    self.originalMinZoomScale = minScale;
+    // Set zoom scales with more appropriate range for wallpaper selection
+    self.scrollView.minimumZoomScale = fitScale * 0.5; // Allow significant zoom out
+    self.scrollView.maximumZoomScale = fillScale * 3.0; // Allow generous zoom in
+    self.originalMinZoomScale = fillScale; // Use fill scale as the "normal" scale for iOS-like behavior
     
     // Set content size
     self.scrollView.contentSize = imageSize;
     
-    // Set initial zoom to fit
-    self.scrollView.zoomScale = minScale;
+    // Set initial zoom to fill the screen (like iOS wallpaper picker default)
+    self.scrollView.zoomScale = fillScale;
     
     // Center the image
     [self centerImage];
     
-    NSLog(@"ImagePreview: Zoom setup - min: %.3f, max: %.3f, current: %.3f", 
-          self.scrollView.minimumZoomScale, self.scrollView.maximumZoomScale, self.scrollView.zoomScale);
+    NSLog(@"ImagePreview: iOS-like zoom setup - fit: %.3f, fill: %.3f, min: %.3f, max: %.3f, current: %.3f", 
+          fitScale, fillScale, self.scrollView.minimumZoomScale, self.scrollView.maximumZoomScale, self.scrollView.zoomScale);
 }
 
 - (void)setupOverlay {
@@ -144,11 +145,11 @@
     
     // Instructions label
     self.instructionLabel = [[UILabel alloc] init];
-    self.instructionLabel.text = @"Pinch to zoom, drag to reposition\nTap confirm when you're happy with the result";
+    self.instructionLabel.text = @"Pinch to zoom, drag to reposition\nLike iOS wallpaper selection - image will fill screen\nTap confirm when satisfied with the result";
     self.instructionLabel.textColor = [UIColor whiteColor];
     self.instructionLabel.textAlignment = NSTextAlignmentCenter;
     self.instructionLabel.numberOfLines = 0;
-    self.instructionLabel.font = [UIFont systemFontOfSize:16];
+    self.instructionLabel.font = [UIFont systemFontOfSize:14];
     self.instructionLabel.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.7];
     self.instructionLabel.layer.cornerRadius = 8;
     self.instructionLabel.clipsToBounds = YES;
@@ -203,8 +204,8 @@
     CGFloat screenWidth = self.view.bounds.size.width;
     CGFloat screenHeight = self.view.bounds.size.height;
     
-    // Instructions at top
-    self.instructionLabel.frame = CGRectMake(20, 40, screenWidth - 40, 60);
+    // Instructions at top - make taller for three lines of text
+    self.instructionLabel.frame = CGRectMake(20, 40, screenWidth - 40, 80);
     
     // Buttons at bottom
     CGFloat buttonWidth = 80;
@@ -253,7 +254,7 @@
 - (void)confirmButtonTapped:(id)sender {
     NSLog(@"ImagePreview: Confirm tapped");
     
-    // Calculate the relative scale (compared to fit-to-screen scale)
+    // Calculate the relative scale compared to the fill scale (iOS wallpaper behavior)
     CGFloat currentZoomScale = self.scrollView.zoomScale;
     CGFloat relativeScale = currentZoomScale / self.originalMinZoomScale;
     
@@ -263,12 +264,14 @@
     CGPoint imageCenter = CGPointMake(imageSize.width / 2.0, imageSize.height / 2.0);
     
     // Calculate offset from image center in original image coordinates
+    // This ensures the offset is meaningful regardless of zoom level
     CGPoint relativeOffset = CGPointMake(
         (contentOffset.x / currentZoomScale) - imageCenter.x,
         (contentOffset.y / currentZoomScale) - imageCenter.y
     );
     
-    NSLog(@"ImagePreview: Confirming with relative scale: %.3f, offset: %@", relativeScale, NSStringFromCGPoint(relativeOffset));
+    NSLog(@"ImagePreview: Confirming with relative scale: %.3f (current: %.3f, base: %.3f), offset: %@", 
+          relativeScale, currentZoomScale, self.originalMinZoomScale, NSStringFromCGPoint(relativeOffset));
     
     if ([self.delegate respondsToSelector:@selector(imagePreviewViewController:didFinishWithImage:scale:offset:)]) {
         [self.delegate imagePreviewViewController:self didFinishWithImage:self.originalImage scale:relativeScale offset:relativeOffset];
@@ -278,7 +281,7 @@
 - (void)resetButtonTapped:(id)sender {
     NSLog(@"ImagePreview: Reset tapped");
     [UIView animateWithDuration:0.3 animations:^{
-        // Reset to fit-to-screen scale and center
+        // Reset to fill-screen scale (iOS wallpaper default) and center
         self.scrollView.zoomScale = self.originalMinZoomScale;
         [self centerImage];
     }];
